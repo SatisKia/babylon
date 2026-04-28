@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture_sample2.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, DefaultRenderingPipeline, DepthOfFieldEffectBlurLevel, Engine, Material, Mesh, MeshBuilder, Scene, StandardMaterial, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+
+// 0～1。合焦の目安（シーン奥行きに対する比率）。既定はカメラ〜原点付近に近い値
+let focusDepth = 0.2;
+let focusRange = 0.8;
+let maxBlur = 0.005;
+const fogFar = 20.0;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+const camera_x = 0.0;
+const camera_y = 3.0;
+const camera_z = 6.0;
+const camera = new UniversalCamera("cam", new Vector3(camera_x, camera_y, camera_z), scene);
+camera.minZ = 0.1;
+// シーンに対してfarを絞ると深度の分解能が上がり、DOFの手前／奥の差が出やすい
+camera.maxZ = 40.0; // Threeでは100.0
+
+camera.fov = Math.PI / 4; // 45deg
+camera.setTarget(new Vector3(0.0, 0.0, 0.0));
+
+const pipeline = new DefaultRenderingPipeline("dof", false, scene, [camera]);
+pipeline.depthOfFieldEnabled = true;
+// Highはカーネルが大きく全体がボケやすい。合焦域の見え方はMediumが扱いやすい
+pipeline.depthOfFieldBlurLevel = DepthOfFieldEffectBlurLevel.High;
+// DepthRendererはcustomRenderFunctionでメッシュのみを深度描画し、
+// renderingGroup.renderがスプライト描画に到達しない（renderSprites=trueでも無効）。
+// そのためDOF用深度にスプライトは含まれず、ビルボード平面メッシュに置き換える。
+const planeTex = new Texture(img_src, scene, false, false, Texture.TRILINEAR_SAMPLINGMODE); // PNGのαを使う（赤枠＋グレー球のみ見せる）。不透明だと矩形全面のRGBが出てしまう
+planeTex.hasAlpha = true;
+planeTex.wrapU = Texture.CLAMP_ADDRESSMODE;
+planeTex.wrapV = Texture.CLAMP_ADDRESSMODE;
+// 右手座標系＋ビルボードでUVが左右・上下とも反転するのを補正
+planeTex.uScale = -1;
+planeTex.uOffset = 1;
+planeTex.vScale = -1;
+planeTex.vOffset = 1;
+const planeMaterial = new StandardMaterial("billboardMaterial", scene);
+planeMaterial.diffuseTexture = planeTex;
+planeMaterial.emissiveTexture = planeTex;
+planeMaterial.emissiveColor = Color3.White();
+planeMaterial.specularColor = Color3.Black();
+planeMaterial.disableLighting = true;
+planeMaterial.useAlphaFromDiffuseTexture = true;
+planeMaterial.transparencyMode = Material.MATERIAL_ALPHATEST;
+planeMaterial.alphaCutOff = 0.2; // 低いほど多く残る。縁が欠ける場合は0.1～0.35で調整
+planeMaterial.backFaceCulling = false;
+
+for (let z = -10.0; z <= 10.0; z += 2.0) {
+  for (let x = -10.0; x <= 10.0; x += 2.0) {
+    const quad = MeshBuilder.CreatePlane("bb", { width: 1, height: 1 }, scene);
+    quad.position = new Vector3(x, 0.0, z);
+    quad.material = planeMaterial;
+    quad.billboardMode = Mesh.BILLBOARDMODE_ALL;
+  }
+}
+
+let angle = 0.0;
+
+const keys = new Set();
+window.addEventListener("keydown", (e) => keys.add(e.code));
+window.addEventListener("keyup", (e) => keys.delete(e.code));
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  if (keys.has("ArrowUp")) focusDepth += 0.01;
+  if (keys.has("ArrowDown")) focusDepth -= 0.01;
+  if (keys.has("ArrowLeft")) focusRange -= 0.01;
+  if (keys.has("ArrowRight")) focusRange += 0.01;
+  if (keys.has("KeyZ")) maxBlur -= 0.001;
+  if (keys.has("KeyX")) maxBlur += 0.001;
+
+  focusDepth = Math.min(Math.max(focusDepth, 0.0), 1.0);
+  focusRange = Math.min(Math.max(focusRange, 0.001), 1.0);
+  maxBlur = Math.max(0.0, maxBlur);
+
+  // Three.js 17.htmlのBokehPass用パラメータに相当する値（HUD表示用）
+  const p = {
+    focus: focusDepth * fogFar,
+    aperture: Math.min(Math.max(0.01 / focusRange, 0.001), 0.15),
+    // maxBlurを3倍したあと0.002～0.04に固定。×3が0.04超や0.002未満ならp.maxblurは張り付く
+    maxblur: Math.min(Math.max(maxBlur * 3.0, 0.002), 0.04),
+  };
+  // BabylonのdepthOfField.focusDistanceは「シーン単位 × 1000」で渡す（内部はmm相当のスケール）。
+  // focalLength既定50より小さい値を渡すとCoC（被写界深度の文脈でよく使われるCircle of Confusion、ボケ円）計算が破綻し、全面が強くぼける。
+  const focusDistanceBabylon = Math.max(p.focus * 1000, pipeline.depthOfField.focalLength + 1);
+  pipeline.depthOfField.focusDistance = focusDistanceBabylon;
+  const baseFStop = Math.min(Math.max(0.01 / p.aperture, 0.2), 64);
+  // fStopが大きいほど絞りが強くボケが弱い。下限2.0は手前のボケを潰しやすいので1.2付近まで許容
+  let fStopVal = (baseFStop * 0.02) / Math.max(p.maxblur, 1e-6);
+  fStopVal = Math.min(Math.max(fStopVal, 1.2), 32);
+  pipeline.depthOfField.fStop = fStopVal;
+  // レンズ径を少し上げるとCoCが大きくなり、手前のボケの差が見えやすい
+  pipeline.depthOfField.lensSize = 70;
+
+  angle += useRightHandedSystem ? 0.012 : -0.012;
+  const rotX = camera_x * Math.cos(angle) - camera_z * Math.sin(angle);
+  const rotZ = camera_z * Math.cos(angle) + camera_x * Math.sin(angle);
+  camera.position.set(rotX, camera_y, rotZ);
+  camera.setTarget(new Vector3(0.0, 0.0, 0.0));
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(255, 0, 255)";
+  context.fillText("focusDepth " + focusDepth.toFixed(2) + " → BokehPass focus " + p.focus.toFixed(2), 0, 24);
+  context.fillText("focusRange " + focusRange.toFixed(2) + " → BokehPass aperture " + p.aperture.toFixed(4), 0, 48);
+  const maxblurScaled = maxBlur * 3;
+  context.fillText("maxBlur " + maxBlur.toFixed(4) + " → ×3=" + maxblurScaled.toFixed(4), 0, 72);
+  context.fillText("BokehPass maxblur " + p.maxblur.toFixed(4), 0, 96);
+  context.fillText("focusDistance " + focusDistanceBabylon.toFixed(0), 0, 120);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

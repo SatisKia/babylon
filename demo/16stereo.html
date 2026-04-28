@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture_sample2.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, Engine, Matrix, Scene, Scene as BScene, Sprite, SpriteManager, Texture, Tools, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+
+const useStereoTrans = false;
+const STEREO_TRANS = 0.2;
+const STEREO_ANGLE_DEG = 3.0;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+engine.setSize(canvas3d.width, canvas3d.height);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+scene.fogMode = BScene.FOGMODE_LINEAR;
+scene.fogColor = new Color3(0.0, 0.0, 1.0);
+scene.fogStart = 5.0;
+scene.fogEnd = 20.0;
+
+const camera_x = 0.0;
+const camera_y = 3.0;
+const camera_z = 6.0;
+
+const camL = new UniversalCamera("camL", new Vector3(camera_x, camera_y, camera_z), scene);
+const camR = new UniversalCamera("camR", new Vector3(camera_x, camera_y, camera_z), scene);
+for (const c of [camL, camR]) {
+  c.minZ = 0.1;
+  c.maxZ = 100.0;
+  c.fov = Math.PI / 4.0;
+  c.setTarget(new Vector3(0.0, 0.0, 0.0));
+}
+camL.viewport = new Viewport(0.0, 0.0, 0.5, 1.0);
+camR.viewport = new Viewport(0.5, 0.0, 0.5, 1.0);
+scene.activeCameras = [camL, camR];
+
+const mgr = new SpriteManager(
+  "sprites",
+  img_src,
+  200,
+  { width: 256, height: 256 },
+  scene,
+  0.01,
+  Texture.NEAREST_SAMPLINGMODE
+);
+mgr.fogEnabled = true;
+
+for (let z = -10.0; z <= 10.0; z += 2.0) {
+  for (let x = -10.0; x <= 10.0; x += 2.0) {
+    const s = new Sprite("sp", mgr);
+    s.position = new Vector3(x, 0.0, z);
+    s.size = 1.0;
+    if (useRightHandedSystem) s.invertU = true;
+  }
+}
+
+let angle = 0.0;
+
+function updateStereoRig(basePos, target) {
+  const halfAspect = (engine.getRenderWidth() * 0.5) / engine.getRenderHeight();
+  camL.aspectRatio = halfAspect;
+  camR.aspectRatio = halfAspect;
+
+  if (useStereoTrans) {
+    const lookDir = target.clone().subtract(basePos);
+    lookDir.normalize();
+    let right = Vector3.Cross(lookDir, Vector3.Up());
+    if (right.lengthSquared() < 1e-12) {
+      right = new Vector3(1.0, 0.0, 0.0);
+    } else {
+      right.normalize();
+    }
+    const off = right.scale(STEREO_TRANS);
+    camL.position.copyFrom(basePos);
+    camL.position.addInPlace(off);
+    camR.position.copyFrom(basePos);
+    camR.position.subtractInPlace(off);
+    camL.setTarget(target);
+    camR.setTarget(target);
+  } else {
+    camL.position.copyFrom(basePos);
+    camR.position.copyFrom(basePos);
+    const baseDir = target.clone().subtract(basePos);
+    baseDir.normalize();
+    const up = Vector3.Up();
+    const rad = Tools.ToRadians(STEREO_ANGLE_DEG);
+    const rotL = Matrix.RotationAxis(up, rad);
+    const rotR = Matrix.RotationAxis(up, -rad);
+    const dirL = Vector3.TransformNormal(baseDir, rotL);
+    const dirR = Vector3.TransformNormal(baseDir, rotR);
+    const dist = 200.0;
+    camL.setTarget(basePos.clone().add(dirL.scale(dist)));
+    camR.setTarget(basePos.clone().add(dirR.scale(dist)));
+  }
+}
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  angle += useRightHandedSystem ? 0.01 : -0.01;
+  const rotX = camera_x * Math.cos(angle) - camera_z * Math.sin(angle);
+  const rotZ = camera_z * Math.cos(angle) + camera_x * Math.sin(angle);
+  const basePos = new Vector3(rotX, camera_y, rotZ);
+  const target = new Vector3(0.0, 0.0, 0.0);
+  updateStereoRig(basePos, target);
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:1024px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="1024" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

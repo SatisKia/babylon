@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, Engine, MeshBuilder, PointLight, Scene, StandardMaterial, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+
+const AMBIENT_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
+const POINT_LIGHT_COEF = 0.3; // d2js版と見た目が同じになるように係数をかける
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const diffuse = [
+  [0.5, 0.5, 0.5],
+  [0.8, 0.8, 0.8],
+  [0.75, 0.6, 0.2],
+];
+const ambient = [
+  [0.5, 0.5, 0.5],
+  [0.1, 0.1, 0.1],
+  [0.25, 0.2, 0.075],
+];
+const specular = [
+  [0.5, 0.5, 0.5],
+  [1.0, 1.0, 1.0],
+  [0.6, 0.5, 0.3],
+];
+const shininess = [
+  99999.0,
+  50.0,
+  10.0,
+];
+
+let pointLightPosX = 0.0;
+let pointLightPosY = 5.0;
+let pointLightPosZ = useRightHandedSystem ? -10.0 : 10.0;
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 0.0, 1.0);
+
+const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 13.0), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0; // 45deg
+camera.setTarget(new Vector3(0.0, 0.0, 0.0));
+
+function makeModel(id, x) {
+  const material = new StandardMaterial(`m${id}`, scene);
+  material.specularColor = new Color3(specular[id][0], specular[id][1], specular[id][2]);
+  const s = shininess[id];
+  material.specularPower = s > 1000 ? 2048 : s;
+  const mesh = MeshBuilder.CreateSphere(`s${id}`, { diameter: 3, segments: 48 }, scene);
+  mesh.material = material;
+  mesh.metadata = { matId: id };
+  mesh.position.x = x;
+  return mesh;
+}
+
+const models = useRightHandedSystem
+  ? [makeModel(0, 0.0), makeModel(1, -5.0), makeModel(2, 5.0)]
+  : [makeModel(0, 0.0), makeModel(1, 5.0), makeModel(2, -5.0)];
+
+const ambientLightIntensity = 0.6 * AMBIENT_LIGHT_COEF;
+const em = ambientLightIntensity * 0.25;
+for (const mesh of models) {
+  const id = mesh.metadata.matId;
+  const material = mesh.material;
+  material.diffuseColor = new Color3(diffuse[id][0], diffuse[id][1], diffuse[id][2]);
+  material.emissiveColor = new Color3(ambient[id][0] * em, ambient[id][1] * em, ambient[id][2] * em);
+}
+
+const pointLightIntensity = 5.0 * POINT_LIGHT_COEF;
+const pointLightReach = 30.0;
+const pointLight = new PointLight("pl", Vector3.Zero(), scene);
+pointLight.intensity = pointLightIntensity;
+pointLight.range = pointLightReach;
+pointLight.parent = camera;
+pointLight.position.set(pointLightPosX, pointLightPosY, pointLightPosZ);
+
+const keys = new Set();
+window.addEventListener("keydown", (e) => keys.add(e.code));
+window.addEventListener("keyup", (e) => keys.delete(e.code));
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  if (keys.has("ArrowUp")) pointLightPosY += 1.0;
+  if (keys.has("ArrowDown")) pointLightPosY -= 1.0;
+  if (keys.has("ArrowLeft")) pointLightPosX += useRightHandedSystem ? 1.0 : -1.0;
+  if (keys.has("ArrowRight")) pointLightPosX -= useRightHandedSystem ? 1.0 : -1.0;
+  if (keys.has("KeyZ")) pointLightPosZ += 1.0;
+  if (keys.has("KeyX")) pointLightPosZ -= 1.0;
+  pointLight.position.set(pointLightPosX, pointLightPosY, pointLightPosZ);
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(255, 0, 255)";
+  context.fillText("pointLightPosX " + pointLightPosX, 0, 24);
+  context.fillText("pointLightPosY " + pointLightPosY, 0, 48);
+  context.fillText("pointLightPosZ " + pointLightPosZ, 0, 72);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

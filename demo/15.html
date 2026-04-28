@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture_witch.js"></script>
+<script src="texture_mesh.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "./node_modules/@babylonjs/core/index.js",
+    "@babylonjs/core/": "./node_modules/@babylonjs/core/",
+    "@babylonjs/loaders": "./node_modules/@babylonjs/loaders/index.js",
+    "@babylonjs/loaders/": "./node_modules/@babylonjs/loaders/"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, MirrorTexture, PBRMaterial, Plane, Quaternion, Scene, ShadowGenerator, Texture, Tools, TransformNode, UniversalCamera, Vector3, VertexBuffer, VertexData } from "@babylonjs/core";
+import { applyDiffuse, applyDiffuseDataUrlTextures, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const MODEL_DIR = "./model/";
+
+const AMBIENT_LIGHT_COEF = 1.0;
+const DIRECTIONAL_LIGHT_COEF = 5.0;
+
+const GROUND_PLANE_SIZE = 200 * 0.033;
+const WATER_METALNESS = 0.12;
+const WATER_ROUGHNESS = 0.05;
+const WATER_CLEARCOAT = 0.92;
+const WATER_CLEARCOAT_ROUGHNESS = 0.03;
+const WATER_IOR = 1.333;
+
+const WATER_MESH_SEGMENTS_X = 192;
+const WATER_MESH_SEGMENTS_Z = 192;
+const WATER_SUBDIV = Math.max(WATER_MESH_SEGMENTS_X, WATER_MESH_SEGMENTS_Z);
+const WAVE_RIPPLE_DENSITY_X = 3.0;
+const WAVE_RIPPLE_DENSITY_Z = 3.0;
+const WAVE_ANIM_SPEED = 0.25;
+const WAVE_AMPLITUDE = 0.05;
+const WAVE_PHASE_RATIO = 0.7;
+const WAVE_FBM_SUM_MAX = 0.5;
+const WAVE_COMBINED_FREQ_X = WAVE_RIPPLE_DENSITY_X;
+const WAVE_COMBINED_FREQ_Z = WAVE_RIPPLE_DENSITY_Z;
+const WAVE_COMBINED_AMP_Z_RATIO = 0.2;
+const WAVE_COMBINED_SPEED = 1.5;
+const WAVE_COMBINED_NOISE_STRENGTH = 0.5;
+const WAVE_COMBINED_NOISE_AMP = 0.5;
+const WAVE_COMBINED_NOISE_U = 0.06;
+const WAVE_COMBINED_NOISE_TIME = 0.1;
+
+let waveType = 0;
+
+function myRandom(ix, iy) {
+  const t = Math.sin(ix * 12.9898 + iy * 78.233) * 43758.5453123;
+  return t - Math.floor(t);
+}
+function combinedWave(x, zPlane, freq, amp, speedMul, elapseT, dx, dz, withNoise) {
+  const r = useRightHandedSystem ? 1.0 : -1.0;
+  let phase = (r * (x * dx + zPlane * dz)) * freq + elapseT * WAVE_COMBINED_SPEED * speedMul;
+  let a = amp;
+  if (withNoise) {
+    const ncx = (r * x) * dx * WAVE_COMBINED_NOISE_U;
+    const ncz = (r * zPlane) * dz * WAVE_COMBINED_NOISE_U + elapseT * WAVE_COMBINED_NOISE_TIME;
+    const scale = 1.0;
+    let nr = 0.0;
+    let ampN = 1.0;
+    let fr = 1.0;
+    for (let o = 0; o < 4; o++) {
+      const fbx = ncx * fr * scale;
+      const fby = ncz * fr * scale;
+      const fi = Math.floor(fbx);
+      const fj = Math.floor(fby);
+      const f = fbx - fi;
+      const g = fby - fj;
+      const ra = myRandom(fi, fj);
+      const rb = myRandom(fi + 1, fj);
+      const rc = myRandom(fi, fj + 1);
+      const rd = myRandom(fi + 1, fj + 1);
+      const u = f * f * (3.0 - 2.0 * f);
+      const v = g * g * (3.0 - 2.0 * g);
+      const sm = ra + (rb - ra) * u + (rc - ra) * v * (1 - u) + (rd - rb) * u * v;
+      nr += ampN * sm;
+      ampN *= 0.5;
+      fr *= 2.0;
+    }
+    const nv = (nr / WAVE_FBM_SUM_MAX) * WAVE_COMBINED_NOISE_STRENGTH;
+    phase += nv * Math.PI;
+    a *= 1.0 + nv * WAVE_COMBINED_NOISE_AMP;
+  }
+  return Math.sin(phase) * a;
+}
+
+let image_loaded = false;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+const lookY = 0.0;
+const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 7.5), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0; // 45deg
+camera.setTarget(new Vector3(0.0, lookY, 0.0));
+
+const scenePivot = new TransformNode("pivot", scene);
+scenePivot.position.set(0.0, lookY, 0.0);
+
+let lightX = useRightHandedSystem ? -3.0 : 3.0;
+let lightY = 7.5;
+let lightZ = 3.5;
+const LIGHT_STEP = 0.1;
+
+let rotateX = useRightHandedSystem ? 25.0 : -25.0;
+let rotateY = 25.0;
+
+const lightHelper = new TransformNode("lightHelper", scene);
+lightHelper.parent = scenePivot;
+
+const mirror = new MirrorTexture("mirror", 1024, scene, true, undefined, Texture.BILINEAR_SAMPLINGMODE, true);
+mirror.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+mirror.level = 1.5;
+
+// 細分割メッシュのYを毎フレーム更新（Three.js版と同様、波面のみ。反射平面はwaterの中心法線で近似）
+const water = MeshBuilder.CreateGround(
+  "water",
+  {
+    width: GROUND_PLANE_SIZE,
+    height: GROUND_PLANE_SIZE,
+    subdivisions: WATER_SUBDIV,
+  },
+  scene
+);
+water.position.y = 0.02;
+water.setParent(scenePivot);
+water.renderingGroupId = 0;
+water.markVerticesDataAsUpdatable(VertexBuffer.PositionKind, true);
+water.markVerticesDataAsUpdatable(VertexBuffer.NormalKind, true);
+
+const waterMaterial = new PBRMaterial("water", scene);
+waterMaterial.metallic = WATER_METALNESS;
+waterMaterial.roughness = WATER_ROUGHNESS;
+waterMaterial.clearCoat.isEnabled = true;
+waterMaterial.clearCoat.intensity = WATER_CLEARCOAT;
+waterMaterial.clearCoat.roughness = WATER_CLEARCOAT_ROUGHNESS;
+waterMaterial.indexOfRefraction = WATER_IOR;
+waterMaterial.albedoColor = new Color3(128 / 255, 128 / 255, 128 / 255);
+waterMaterial.alpha = 0.58;
+waterMaterial.transparencyMode = 2;
+waterMaterial.backFaceCulling = false;
+waterMaterial.reflectionTexture = mirror;
+waterMaterial.reflectionTexture.level = 1.45;
+water.material = waterMaterial;
+water.receiveShadows = true;
+
+function refreshMirrorRenderList() {
+  mirror.renderList.length = 0;
+  const skip = new Set([water]);
+  for (const m of scene.meshes) {
+    if (!m || skip.has(m)) continue;
+    if (m.getClassName?.() !== "Mesh") continue;
+    if (!m.getTotalVertices || m.getTotalVertices() === 0) continue;
+    mirror.renderList.push(m);
+  }
+}
+
+const hemi = new HemisphericLight("h", new Vector3(0.0, 1.0, 0.0), scene);
+hemi.diffuse = Color3.White();
+hemi.groundColor = Color3.White();
+hemi.intensity = 0.5 * AMBIENT_LIGHT_COEF;
+
+const dir = new DirectionalLight("dir", new Vector3(0.0, -1.0, 0.0), scene);
+dir.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
+dir.shadowMinZ = 0.5;
+dir.shadowMaxZ = 40.0;
+const shadowExtent = 12.0 * (GROUND_PLANE_SIZE / 20.0);
+dir.shadowFrustumSize = Math.max(shadowExtent, 8);
+
+const shadowGen = new ShadowGenerator(2048, dir);
+shadowGen.filter = ShadowGenerator.FILTER_PCF;
+shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH; // 5×5 PCF
+shadowGen.bias = 0.0008;
+
+async function init() {
+  const specs = [
+    { name: "witch", scale: 0.015, pos: [0.0, 0.05, 0.0], diffuse: 0.8 },
+    { name: "cat", scale: 0.005, pos: [useRightHandedSystem ? -1.5 : 1.5, 0.4, 0.5] },
+    { name: "swan", scale: 0.005, pos: [useRightHandedSystem ? 2.0 : -2.0, 2.0, 0.5], kaBlend: 0.35 },
+    { name: "mesh", scale: 0.033, pos: [0.0, 1.2, -1.5] },
+  ];
+  try {
+    for (const s of specs) {
+      const root = await loadObjMtl(scene, MODEL_DIR, s.name);
+      if (s.name === "witch") {
+        applyDiffuseDataUrlTextures(scene, root, [
+          { materialName: "kao", dataUrl: img_src[0] },
+          { materialName: "body", dataUrl: img_src[1] },
+          { materialName: "fire", dataUrl: img_src[2] },
+        ]);
+      }
+      if (s.name === "mesh") {
+        applyDiffuseDataUrlTextures(scene, root, [
+          { materialName: "mat1", dataUrl: img_src_mesh },
+        ]);
+      }
+      convertMaterialsToLambert(root);
+      if (s.diffuse !== undefined) applyDiffuse(root, s.diffuse, s.diffuse, s.diffuse);
+      if (s.kaBlend !== undefined) applyKaBlendToDiffuse(root, s.kaBlend);
+      applySmoothShading(root);
+      root.scaling.copyFromFloats(s.scale, s.scale, s.scale);
+      root.position.set(s.pos[0], s.pos[1], s.pos[2]);
+      const castShadow = !s.ground;
+      const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+      if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+      for (const mesh of meshes) {
+        if (castShadow) shadowGen.addShadowCaster(mesh);
+        mesh.receiveShadows = true;
+      }
+      root.setParent(scenePivot);
+    }
+    refreshMirrorRenderList();
+    image_loaded = true;
+  } catch (e) {
+    console.error(e);
+  }
+}
+init();
+
+const keys = new Set();
+window.addEventListener("keydown", (e) => keys.add(e.code));
+window.addEventListener("keyup", (e) => keys.delete(e.code));
+
+let elapse = 0;
+
+runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), () => {
+  if (keys.has("ArrowUp")) lightY += LIGHT_STEP;
+  if (keys.has("ArrowDown")) lightY -= LIGHT_STEP;
+  if (keys.has("ArrowLeft")) lightX -= useRightHandedSystem ? LIGHT_STEP : -LIGHT_STEP;
+  if (keys.has("ArrowRight")) lightX += useRightHandedSystem ? LIGHT_STEP : -LIGHT_STEP;
+  if (keys.has("KeyZ")) lightZ += LIGHT_STEP;
+  if (keys.has("KeyX")) lightZ -= LIGHT_STEP;
+
+  elapse += WAVE_ANIM_SPEED;
+  const positions = water.getVerticesData(VertexBuffer.PositionKind, true);
+  if (positions) {
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const zPlane = positions[i + 2];
+      let hVal;
+      if (waveType === 0) {
+        const r = useRightHandedSystem ? 1.0 : -1.0;
+        hVal =
+          WAVE_AMPLITUDE *
+          Math.sin(x * WAVE_RIPPLE_DENSITY_X + r * elapse) *
+          Math.cos(zPlane * WAVE_RIPPLE_DENSITY_Z + r * elapse * WAVE_PHASE_RATIO);
+      } else {
+        const useNoise = waveType === 2;
+
+        const ax = WAVE_AMPLITUDE * 0.38;
+        const az = WAVE_AMPLITUDE * 0.38 * WAVE_COMBINED_AMP_Z_RATIO;
+
+        hVal = 0.0;
+        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_X, ax, 1.0, elapse, 1.0, 0.0, useNoise);
+        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_X * 0.7, ax * 0.5, 0.8, elapse, 0.7, 0.7, useNoise);
+        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_X * 1.5, ax * 0.3, 1.2, elapse, 0.3, 0.9, useNoise);
+        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_Z, az, 1.0, elapse, 0.0, 1.0, useNoise);
+        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_Z * 0.7, az * 0.5, 0.8, elapse, 0.7, 0.7, useNoise);
+        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_Z * 1.5, az * 0.3, 1.2, elapse, 0.3, 0.9, useNoise);
+      }
+      positions[i + 1] = hVal;
+    }
+    water.updateVerticesData(VertexBuffer.PositionKind, positions, false, false);
+    const indices = water.getIndices();
+    if (indices) {
+      const normals = [];
+      VertexData.ComputeNormals(positions, indices, normals);
+      water.updateVerticesData(VertexBuffer.NormalKind, normals, false, false);
+    }
+    water.refreshBoundingInfo();
+  }
+
+  // 回転はimageのロード完了後に反映
+  if (image_loaded) {
+    const r = useRightHandedSystem ? 1.0 : -1.0;
+    const rotX = Matrix.RotationX(r * Tools.ToRadians(rotateX));
+    const rotY = Matrix.RotationY(r * Tools.ToRadians(rotateY));
+    const rotZ = Matrix.RotationZ(0.0);
+    scenePivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX)));
+    scenePivot.computeWorldMatrix(true);
+  }
+
+  lightHelper.position.set(lightX, lightY - lookY, lightZ);
+  scenePivot.computeWorldMatrix(true);
+  lightHelper.computeWorldMatrix(true);
+  const transLight = lightHelper.getAbsolutePosition();
+  dir.position.copyFrom(transLight);
+  const tgt = new Vector3(0.0, lookY, 0.0);
+  const toT = tgt.subtract(transLight);
+  if (toT.lengthSquared() > 1e-10) {
+    toT.normalize();
+    dir.direction.copyFrom(toT);
+  }
+
+  water.computeWorldMatrix(true);
+  {
+    const wm = water.getWorldMatrix();
+    const worldPos = Vector3.TransformCoordinates(Vector3.Zero(), wm);
+    const worldNor = Vector3.TransformNormal(new Vector3(0.0, 1.0, 0.0), wm);
+    worldNor.normalize();
+    worldNor.scaleInPlace(-1);
+    mirror.mirrorPlane = Plane.FromPositionAndNormal(worldPos, worldNor);
+  }
+  refreshMirrorRenderList();
+  camera.aspectRatio = engine.getRenderWidth() / engine.getRenderHeight();
+  camera.setTarget(new Vector3(0.0, lookY, 0.0));
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(255, 0, 255)";
+  context.fillText("waveType " + waveType, 0, 24);
+  context.fillText("rotateX " + rotateX.toFixed(1), 0, 48);
+  context.fillText("rotateY " + rotateY.toFixed(1), 0, 72);
+  context.fillText("lightX " + lightX.toFixed(1), 0, 96);
+  context.fillText("lightY " + lightY.toFixed(1), 0, 120);
+  context.fillText("lightZ " + lightZ.toFixed(1), 0, 144);
+});
+
+let mouseDown = false;
+let mouseX = 0;
+let mouseY = 0;
+canvas3d.addEventListener("pointerdown", (e) => {
+  mouseDown = true;
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+window.addEventListener("pointerup", () => {
+  mouseDown = false;
+});
+window.addEventListener("pointermove", (e) => {
+  if (!mouseDown) return;
+  const r = useRightHandedSystem ? 1.0 : -1.0;
+  rotateX += r * (e.clientY - mouseY) / 2.0;
+  rotateY += (e.clientX - mouseX) / 2.0;
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Digit1" || e.code === "Numpad1") waveType = 0;
+  else if (e.code === "Digit2" || e.code === "Numpad2") waveType = 1;
+  else if (e.code === "Digit3" || e.code === "Numpad3") waveType = 2;
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

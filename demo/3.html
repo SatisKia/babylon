@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture_sample1.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, Engine, Material, Matrix, Mesh, PBRMaterial, Quaternion, Scene, Texture, Tools, UniversalCamera, Vector3, VertexData } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 0.0), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0; // 45deg
+camera.aspectRatio = canvas3d.width / canvas3d.height;
+camera.setTarget(new Vector3(0.0, 0.0, useRightHandedSystem ? -1.0 : 1.0));
+
+const mesh = new Mesh("texquad", scene);
+const vd = new VertexData();
+vd.positions = [
+  -1.0, -1.0, 0.0, // 左下
+   1.0, -1.0, 0.0, // 右下
+  -1.0,  1.0, 0.0, // 左上
+   1.0,  1.0, 0.0, // 右上
+];
+vd.uvs = [
+  0.0, 1.0, // 左下
+  1.0, 1.0, // 右下
+  0.0, 0.0, // 左上
+  1.0, 0.0, // 右上
+];
+vd.indices = [0, 1, 2, 1, 3, 2];
+const normals = [];
+VertexData.ComputeNormals(vd.positions, vd.indices, normals);
+vd.normals = normals;
+vd.applyToMesh(mesh);
+if (useRightHandedSystem) mesh.flipFaces(false/*法線は反転させない*/); // 右手系＋Threeと同じ捲き順だと裏面扱いになるので反転（インデックスの入れ替えのみ）
+
+// 非ライティングのテクスチャはPBRのunlit + albedoが安定（Standardのemissive/opacity組み合わせで真っ白になることがある）
+const noMipmapOrOptions = true; // Threeのtexture.generateMipmaps=falseに合わせて、noMipmapOrOptionsはtrue（ミップマップOFF）
+const invertY = false; // Threeのtexture.flipY = falseに合わせて、invertYはfalse
+const texture = new Texture(img_src, scene, noMipmapOrOptions, invertY, Texture.TRILINEAR_SAMPLINGMODE);
+texture.wrapU = Texture.CLAMP_ADDRESSMODE;
+texture.wrapV = Texture.CLAMP_ADDRESSMODE;
+
+const material = new PBRMaterial("m", scene);
+material.unlit = true;
+material.metallic = 0;
+material.roughness = 1;
+material.albedoTexture = texture;
+material.albedoColor = Color3.White();
+material.transparencyMode = Material.MATERIAL_ALPHABLEND;
+material.useAlphaFromAlbedoTexture = true;
+mesh.material = material;
+
+mesh.position.set(0.0, 0.0, useRightHandedSystem ? -6.0 : 6.0);
+const rotS = useRightHandedSystem ? 1.0 : -1.0;
+const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
+const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
+const rotZ = Matrix.RotationZ(Tools.ToRadians(15.0));
+mesh.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(255, 0, 255)";
+  context.fillText("Hello World !!", 0, 24);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

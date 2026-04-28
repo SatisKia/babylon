@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/index.js",
+    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/",
+    "@babylonjs/loaders": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/index.js",
+    "@babylonjs/loaders/": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene as BScene, Sprite, SpriteManager, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { _DIV, _MOD, GROUND_SIZE, Jiki, JikiJet, WAIT_1 } from "./gameCommon.js";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const MODEL_DIR = "./model/";
+
+const FRAME_INTERVAL_MS = 1000 / WAIT_1;
+
+const AMBIENT_LIGHT_COEF = 2.5; // d2js版と見た目が同じになるように係数をかける
+const DIRECTIONAL_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
+const BABYLON_LIGHT_SCALE = 0.22 * 2.0; // d2js版と見た目が同じになるように係数をかける
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new BScene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(1.0, 1.0, 1.0, 1.0);
+scene.fogMode = BScene.FOGMODE_LINEAR;
+scene.fogStart = 50.0;
+scene.fogEnd = 500.0;
+scene.fogColor = Color3.White();
+
+scene.imageProcessingConfiguration.exposure = 1.0;
+scene.imageProcessingConfiguration.contrast = 1.0;
+
+const camera = new UniversalCamera("cam", new Vector3(0.0, 52.0, 10.0), scene);
+camera.minZ = 0.1;
+camera.maxZ = 1000.0;
+camera.fov = Math.PI / 4.0; // 45deg
+
+const hemi = new HemisphericLight("hemi", new Vector3(0.0, 1.0, 0.0), scene);
+hemi.diffuse = Color3.White();
+hemi.groundColor = Color3.White();
+hemi.intensity = 0.6 * AMBIENT_LIGHT_COEF * BABYLON_LIGHT_SCALE;
+// Threeでのdir.position.set(-0.85, 0.8, -0.75) - BabylonのDirectionalLightは光線の進行方向 = -position
+const dirDir = useRightHandedSystem
+  ? new Vector3(-0.85, 0.8, -0.75).negate().normalize()
+  : new Vector3(-0.85, -0.8, 0.75).normalize();
+const dir = new DirectionalLight("dir", dirDir, scene);
+dir.intensity = 0.5 * DIRECTIONAL_LIGHT_COEF * BABYLON_LIGHT_SCALE;
+
+const keys = {};
+window.addEventListener("keydown", (e) => { keys[e.code] = true; });
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+const jiki = new Jiki(1.0);
+let jikiModel = null;
+let groundTemplate = null;
+const groundModels = [];
+const jetList = [];
+let jetSpriteManager = null;
+let elapse = 0;
+
+function setGroundTiles() {
+  if (!groundTemplate) {
+    return;
+  }
+  const gx = Math.floor(jiki.x() / GROUND_SIZE) * GROUND_SIZE;
+  const gz = Math.floor(jiki.z() / GROUND_SIZE) * GROUND_SIZE;
+  let i = 0;
+  for (let zz = -1; zz <= 1; zz++) {
+    for (let xx = -1; xx <= 1; xx++) {
+      if (!groundModels[i]) {
+        const m = groundTemplate.clone(`g${i}`, null, false);
+        groundModels[i] = m;
+      }
+      groundModels[i].position.set(gx + GROUND_SIZE * xx, 0.0, gz + GROUND_SIZE * zz);
+      i++;
+    }
+  }
+}
+
+function addJetParticle(jet) {
+  const sprite = new Sprite("jet", jetSpriteManager);
+  sprite.size = 1.0;
+  sprite.color = new Color4(1.0, 1.0, 1.0, 1.0);
+  jetList.push({ jet, sprite });
+}
+
+async function init() {
+  try {
+    if (typeof textureSrc === "undefined" || !textureSrc[0]) throw new Error("texture.js");
+    jetSpriteManager = new SpriteManager("jet", textureSrc[0], 4000, { width: 128, height: 128 }, scene);
+
+    groundTemplate = await loadObjMtl(scene, MODEL_DIR, "ground");
+    convertMaterialsToLambert(groundTemplate);
+    applySmoothShading(groundTemplate);
+    groundTemplate.scaling.setAll(6.0);
+
+    jikiModel = await loadObjMtl(scene, MODEL_DIR, "jiki");
+    convertMaterialsToLambert(jikiModel);
+    applySmoothShading(jikiModel);
+    jikiModel.scaling.setAll(0.01);
+
+    setGroundTiles();
+  } catch (e) {
+    console.error(e);
+  }
+}
+init();
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  elapse++;
+
+  jiki.update(
+    !!keys.ArrowUp,
+    !!keys.ArrowDown,
+    !!keys.ArrowLeft,
+    !!keys.ArrowRight,
+    useRightHandedSystem
+  );
+  setGroundTiles();
+  if (jikiModel) jiki.pose(jikiModel);
+
+  if (jetSpriteManager && _MOD(elapse, _DIV(WAIT_1, 15)) === 0) {
+    const vx = -jiki.vx() / WAIT_1;
+    const vy = -jiki.vy() / WAIT_1;
+    const vz = -jiki.vz() / WAIT_1;
+    const bx = jiki.x() - jiki.vx() * 1.5;
+    const by = jiki.y() - jiki.vy() * 1.5;
+    const bz = jiki.z() - jiki.vz() * 1.5;
+    const { right } = jiki.jetOffsetWorld();
+    addJetParticle(new JikiJet(bx + right.x, by + right.y, bz + right.z, vx, vy, vz));
+    addJetParticle(new JikiJet(bx - right.x, by - right.y, bz - right.z, vx, vy, vz));
+  }
+
+  for (let i = jetList.length - 1; i >= 0; i--) {
+    const { jet, sprite } = jetList[i];
+    if (!jet.update()) {
+      sprite.dispose();
+      jetList.splice(i, 1);
+      continue;
+    }
+    sprite.position.set(jet.x(), jet.y(), jet.z());
+    sprite.color.a = jet.trans();
+  }
+
+  const camera_vx = -jiki.vx() * 10.0;
+  const camera_vy = -jiki.vy() * 10.0;
+  const camera_vz = -jiki.vz() * 10.0;
+  const look_x = jiki.x();
+  const look_y = jiki.y() + 1.0; // 自機の少し上
+  const look_z = jiki.z();
+  const camera_x = look_x + camera_vx;
+  const camera_y = look_y + camera_vy + 1.0; // 少し上から見下ろす
+  const camera_z = look_z + camera_vz;
+  camera.position.set(camera_x, camera_y, camera_z);
+  camera.setTarget(new Vector3(look_x, look_y, look_z));
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.strokeStyle = "rgb(0, 0, 0)";
+  context.strokeRect(0, 0, canvas2d.width - 1, canvas2d.height - 1);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture_witch.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/index.js",
+    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/",
+    "@babylonjs/loaders": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/index.js",
+    "@babylonjs/loaders/": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, MirrorTexture, Plane, Quaternion, Scene, ShadowGenerator, StandardMaterial, Texture, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { applyDiffuse, applyDiffuseDataUrlTextures, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const MODEL_DIR = "./model/";
+
+const AMBIENT_LIGHT_COEF = 1.0;
+const DIRECTIONAL_LIGHT_COEF = 5.0;
+
+const GROUND_MODEL_SCALE = 0.033;
+const GROUND_PLANE_SIZE = 200 * GROUND_MODEL_SCALE;
+const GROUND_COLOR = 0xffffff;
+
+let image_loaded = false;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+const lookY = 0.0;
+const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 7.5), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0;
+camera.setTarget(new Vector3(0.0, lookY, 0.0));
+
+const scenePivot = new TransformNode("pivot", scene);
+scenePivot.position.set(0.0, lookY, 0.0);
+
+let lightX = useRightHandedSystem ? -3.0 : 3.0;
+let lightY = 7.5;
+let lightZ = 3.5;
+const LIGHT_STEP = 0.1;
+
+let rotateX = useRightHandedSystem ? 25.0 : -25.0;
+let rotateY = 25.0;
+
+const lightHelper = new TransformNode("lightHelper", scene);
+lightHelper.parent = scenePivot;
+
+const mirror = new MirrorTexture("mirror", 1024, scene, true, undefined, Texture.BILINEAR_SAMPLINGMODE, true);
+mirror.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+mirror.level = 1;
+
+const mirrorMesh = MeshBuilder.CreateGround(
+  "reflector",
+  { width: GROUND_PLANE_SIZE, height: GROUND_PLANE_SIZE, subdivisions: 1 },
+  scene
+);
+mirrorMesh.position.y = 0.01;
+mirrorMesh.setParent(scenePivot);
+
+// 拡散を白に近づけると反射が埋もれ床が真っ白に見える。ベースは暗め、反射はlevelで効かせる
+const mirrorMaterial = new StandardMaterial("mirrorMaterial", scene);
+mirrorMaterial.diffuseColor = new Color3(0.08, 0.09, 0.11);
+mirrorMaterial.specularColor = new Color3(0.75, 0.78, 0.85);
+mirrorMaterial.specularPower = 96;
+mirrorMaterial.emissiveColor = Color3.Black();
+mirrorMaterial.reflectionTexture = mirror;
+mirrorMaterial.reflectionTexture.level = 1;
+mirrorMesh.material = mirrorMaterial;
+mirrorMesh.receiveShadows = true;
+
+const ground = MeshBuilder.CreateGround(
+  "glass",
+  { width: GROUND_PLANE_SIZE, height: GROUND_PLANE_SIZE, subdivisions: 1 },
+  scene
+);
+ground.position.y = 0.02;
+ground.setParent(scenePivot);
+const groundMaterial = new StandardMaterial("glassMaterial", scene);
+groundMaterial.diffuseColor = new Color3(0.82, 0.84, 0.88);
+groundMaterial.alpha = 0.42;
+groundMaterial.transparencyMode = 2;
+ground.material = groundMaterial;
+ground.receiveShadows = true;
+
+function refreshMirrorRenderList() {
+  mirror.renderList.length = 0;
+  const skip = new Set([mirrorMesh, ground]);
+  for (const m of scene.meshes) {
+    if (!m || skip.has(m)) continue;
+    if (m.getClassName?.() !== "Mesh") continue;
+    if (!m.getTotalVertices || m.getTotalVertices() === 0) continue;
+    mirror.renderList.push(m);
+  }
+}
+
+const hemi = new HemisphericLight("h", new Vector3(0.0, 1.0, 0.0), scene);
+hemi.diffuse = Color3.White();
+hemi.groundColor = Color3.White();
+hemi.intensity = 0.5 * AMBIENT_LIGHT_COEF;
+
+const dir = new DirectionalLight("dir", new Vector3(0.0, -1.0, 0.0), scene);
+dir.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
+dir.shadowMinZ = 0.5;
+dir.shadowMaxZ = 40.0;
+const shadowExtent = 12.0 * (GROUND_PLANE_SIZE / 20.0);
+dir.shadowFrustumSize = Math.max(shadowExtent, 8);
+
+const shadowGen = new ShadowGenerator(2048, dir);
+shadowGen.filter = ShadowGenerator.FILTER_PCF;
+shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH; // 5×5 PCF
+shadowGen.bias = 0.0008;
+
+async function init() {
+  const specs = [
+    { name: "witch", scale: 0.015, pos: [0.0, 0.05, 0.0], diffuse: 0.8 },
+    { name: "cat", scale: 0.005, pos: [useRightHandedSystem ? -1.5 : 1.5, 0.4, 0.5] },
+    { name: "swan", scale: 0.005, pos: [useRightHandedSystem ? 2.0 : -2.0, 2.0, 0.5], kaBlend: 0.35 },
+    { name: "ground", scale: GROUND_MODEL_SCALE, pos: [0.0, 0.0, 0.0], ground: true },
+  ];
+  try {
+    for (const s of specs) {
+      const root = await loadObjMtl(scene, MODEL_DIR, s.name);
+      if (s.name === "witch") {
+        applyDiffuseDataUrlTextures(scene, root, [
+          { materialName: "kao", dataUrl: img_src[0] },
+          { materialName: "body", dataUrl: img_src[1] },
+          { materialName: "fire", dataUrl: img_src[2] },
+        ]);
+      }
+      convertMaterialsToLambert(root);
+      if (s.diffuse !== undefined) applyDiffuse(root, s.diffuse, s.diffuse, s.diffuse);
+      if (s.kaBlend !== undefined) applyKaBlendToDiffuse(root, s.kaBlend);
+      applySmoothShading(root);
+      root.scaling.copyFromFloats(s.scale, s.scale, s.scale);
+      root.position.set(s.pos[0], s.pos[1], s.pos[2]);
+      const castShadow = !s.ground;
+      const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+      if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+      for (const mesh of meshes) {
+        if (castShadow) shadowGen.addShadowCaster(mesh);
+        mesh.receiveShadows = true;
+      }
+      root.setParent(scenePivot);
+    }
+    refreshMirrorRenderList();
+    image_loaded = true;
+  } catch (e) {
+    console.error(e);
+  }
+}
+init();
+
+const keys = new Set();
+window.addEventListener("keydown", (e) => keys.add(e.code));
+window.addEventListener("keyup", (e) => keys.delete(e.code));
+
+runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), () => {
+  if (keys.has("ArrowUp")) lightY += LIGHT_STEP;
+  if (keys.has("ArrowDown")) lightY -= LIGHT_STEP;
+  if (keys.has("ArrowLeft")) lightX -= useRightHandedSystem ? LIGHT_STEP : -LIGHT_STEP;
+  if (keys.has("ArrowRight")) lightX += useRightHandedSystem ? LIGHT_STEP : -LIGHT_STEP;
+  if (keys.has("KeyZ")) lightZ += LIGHT_STEP;
+  if (keys.has("KeyX")) lightZ -= LIGHT_STEP;
+
+  // 回転はimageのロード完了後に反映
+  if (image_loaded) {
+    const r = useRightHandedSystem ? 1.0 : -1.0;
+    const rotX = Matrix.RotationX(r * Tools.ToRadians(rotateX));
+    const rotY = Matrix.RotationY(r * Tools.ToRadians(rotateY));
+    const rotZ = Matrix.RotationZ(0.0);
+    scenePivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX)));
+    scenePivot.computeWorldMatrix(true);
+  }
+
+  lightHelper.position.set(lightX, lightY - lookY, lightZ);
+  scenePivot.computeWorldMatrix(true);
+  lightHelper.computeWorldMatrix(true);
+  const transLight = lightHelper.getAbsolutePosition();
+  dir.position.copyFrom(transLight);
+  const tgt = new Vector3(0.0, lookY, 0.0);
+  const toT = tgt.subtract(transLight);
+  if (toT.lengthSquared() > 1e-10) {
+    toT.normalize();
+    dir.direction.copyFrom(toT);
+  }
+
+  mirrorMesh.computeWorldMatrix(true);
+  {
+    const pos = mirrorMesh.getAbsolutePosition();
+    const n = Vector3.TransformNormal(new Vector3(0.0, 1.0, 0.0), mirrorMesh.getWorldMatrix());
+    n.normalize();
+    // クリップ面の向きで反射パスにメッシュが入らないことがあるため法線を反転して試す
+    n.scaleInPlace(-1);
+    mirror.mirrorPlane = Plane.FromPositionAndNormal(pos, n);
+  }
+  refreshMirrorRenderList();
+  camera.aspectRatio = engine.getRenderWidth() / engine.getRenderHeight();
+  camera.setTarget(new Vector3(0.0, lookY, 0.0));
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(255, 0, 255)";
+  context.fillText("rotateX " + rotateX.toFixed(1), 0, 24);
+  context.fillText("rotateY " + rotateY.toFixed(1), 0, 48);
+  context.fillText("lightX " + lightX.toFixed(1), 0, 72);
+  context.fillText("lightY " + lightY.toFixed(1), 0, 96);
+  context.fillText("lightZ " + lightZ.toFixed(1), 0, 120);
+});
+
+let mouseDown = false;
+let mouseX = 0;
+let mouseY = 0;
+canvas3d.addEventListener("pointerdown", (e) => {
+  mouseDown = true;
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+window.addEventListener("pointerup", () => {
+  mouseDown = false;
+});
+window.addEventListener("pointermove", (e) => {
+  if (!mouseDown) return;
+  const r = useRightHandedSystem ? 1.0 : -1.0;
+  rotateX += r * (e.clientY - mouseY) / 2.0;
+  rotateY += (e.clientX - mouseX) / 2.0;
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

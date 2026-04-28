@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Quaternion, Scene, StandardMaterial, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+
+const AMBIENT_LIGHT_COEF = 0.33; // d2js版と見た目が同じになるように係数をかける
+const DIRECTIONAL_LIGHT_COEF = 1.66; // d2js版と見た目が同じになるように係数をかける
+
+const MATERIAL_DATA = [
+  [[0.780392, 0.568627, 0.113725], [0.329412, 0.223529, 0.027451], [0.992157, 0.941176, 0.807843], 27.8974, 1.0],
+  [[0.714, 0.4284, 0.18144], [0.2125, 0.1275, 0.054], [0.393548, 0.271906, 0.166721], 25.6, 1.0],
+  [[0.4, 0.4, 0.4], [0.25, 0.25, 0.25], [0.774597, 0.774597, 0.774597], 76.8, 1.0],
+  [[0.7038, 0.27048, 0.0828], [0.19125, 0.0735, 0.0225], [0.256777, 0.137622, 0.086014], 12.8, 1.0],
+  [[0.75164, 0.60648, 0.22648], [0.24725, 0.1995, 0.0745], [0.628281, 0.555802, 0.366065], 51.2, 1.0],
+  [[0.427451, 0.470588, 0.541176], [0.105882, 0.058824, 0.113725], [0.333333, 0.333333, 0.521569], 9.84615, 1.0],
+  [[0.50754, 0.50754, 0.50754], [0.19225, 0.19225, 0.19225], [0.508273, 0.508273, 0.508273], 51.2, 1.0],
+  [[0.07568, 0.61424, 0.07568], [0.0215, 0.1745, 0.0215], [0.633, 0.727811, 0.633], 76.8, 0.55],
+  [[0.54, 0.89, 0.63], [0.135, 0.2225, 0.1575], [0.316228, 0.316228, 0.316228], 12.8, 0.95],
+  [[0.18275, 0.17, 0.22525], [0.05375, 0.05, 0.06625], [0.332741, 0.328634, 0.346435], 38.4, 0.82],
+  [[1.0, 0.829, 0.829], [0.25, 0.20725, 0.20725], [0.296648, 0.296648, 0.296648], 11.264, 0.922],
+  [[0.61424, 0.04136, 0.04136], [0.1745, 0.01175, 0.01175], [0.727811, 0.626959, 0.626959], 76.8, 0.55],
+  [[0.396, 0.74151, 0.69102], [0.1, 0.18725, 0.1745], [0.297254, 0.30829, 0.306678], 12.8, 0.8],
+  [[0.01, 0.01, 0.01], [0.0, 0.0, 0.0], [0.50, 0.50, 0.50], 32.0, 1.0],
+  [[0.01, 0.01, 0.01], [0.02, 0.02, 0.02], [0.4, 0.4, 0.4], 10.0, 1.0],
+];
+const MATERIAL_NAME = [
+  "BRASS", "BRONZE", "CHROME", "COPPER", "GOLD", "PEWTER", "SILVER",
+  "EMERALD", "JADE", "OBSIDIAN", "PEARL", "RUBY", "TURQUOISE", "BLACK_PLASTIC", "BLACK_RUBBER",
+];
+
+let materialIndex = 0;
+let lightPosX = useRightHandedSystem ? 1.0 : -1.0;
+let lightPosY = 1.0;
+let lightPosZ = 1.0;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 3.0), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0; // 45deg
+camera.setTarget(new Vector3(0.0, 0.0, 0.0));
+
+const model = MeshBuilder.CreateSphere("sph", { diameter: 3, segments: 64 }, scene);
+const material = new StandardMaterial("material", scene);
+material.specularColor = Color3.White();
+material.specularPower = 50.0;
+material.transparencyMode = 0;
+model.material = material;
+model.position.set(0.0, 0.0, -3.0);
+const rotS = useRightHandedSystem ? 1.0 : -1.0;
+const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
+const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
+const rotZ = Matrix.RotationZ(rotS * Tools.ToRadians(15.0));
+model.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
+
+const hemi = new HemisphericLight("hemi", new Vector3(0.0, 1.0, 0.0), scene);
+hemi.diffuse = Color3.White();
+hemi.groundColor = Color3.White();
+hemi.intensity = 1.0 * AMBIENT_LIGHT_COEF;
+
+const dirVec = useRightHandedSystem
+  ? new Vector3(-1.0, -1.0, -1.0).normalize()
+  : new Vector3(-1.0, 1.0, 1.0).normalize();
+const dir = new DirectionalLight("dir", dirVec, scene);
+dir.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
+
+function applyMaterial() {
+  const data = MATERIAL_DATA[materialIndex];
+  material.diffuseColor = new Color3(data[0][0], data[0][1], data[0][2]);
+  material.emissiveColor = new Color3(data[1][0], data[1][1], data[1][2]);
+  material.emissiveIntensity = 1.0;
+  material.specularColor = new Color3(data[2][0], data[2][1], data[2][2]);
+  material.specularPower = data[3];
+  material.alpha = data[4];
+  material.transparencyMode = data[4] < 1.0 ? 2 : 0;
+}
+applyMaterial();
+
+function setLight() {
+  const lp = new Vector3(lightPosX, lightPosY, lightPosZ);
+  if (lp.lengthSquared() < 1e-12) return;
+  dir.direction = lp.scale(-1.0).normalize();
+}
+setLight();
+
+const keys = new Set();
+window.addEventListener("keydown", (e) => keys.add(e.code));
+window.addEventListener("keyup", (e) => keys.delete(e.code));
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  if (keys.has("ArrowUp")) lightPosY += 0.1;
+  if (keys.has("ArrowDown")) lightPosY -= 0.1;
+  if (keys.has("ArrowLeft")) lightPosX -= useRightHandedSystem ? 0.1 : -0.1;
+  if (keys.has("ArrowRight")) lightPosX += useRightHandedSystem ? 0.1 : -0.1;
+  if (keys.has("KeyZ")) lightPosZ += 0.1;
+  if (keys.has("KeyX")) lightPosZ -= 0.1;
+  setLight();
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(255, 0, 255)";
+  context.fillText(MATERIAL_NAME[materialIndex], 0, 24);
+  context.fillText("lightPosX " + lightPosX.toFixed(2), 0, 48);
+  context.fillText("lightPosY " + lightPosY.toFixed(2), 0, 72);
+  context.fillText("lightPosZ " + lightPosZ.toFixed(2), 0, 96);
+});
+
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Enter") {
+    materialIndex = (materialIndex + 1) % MATERIAL_DATA.length;
+    applyMaterial();
+  }
+});
+window.addEventListener("click", () => {
+  materialIndex = (materialIndex + 1) % MATERIAL_DATA.length;
+  applyMaterial();
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture_sample2.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, Engine, Scene, Scene as BScene, Sprite, SpriteManager, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+scene.fogMode = BScene.FOGMODE_LINEAR;
+scene.fogColor = new Color3(0.0, 0.0, 1.0);
+scene.fogStart = 5.0;
+scene.fogEnd = 20.0;
+
+const camera_x = 0.0;
+const camera_y = 3.0;
+const camera_z = 6.0;
+const camera = new UniversalCamera("cam", new Vector3(camera_x, camera_y, camera_z), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0;
+camera.setTarget(new Vector3(0.0, 0.0, 0.0));
+
+const mgr = new SpriteManager(
+  "sprites",
+  img_src, // 第2引数はURL文字列（Textureインスタンスではない）
+  200,
+  { width: 256, height: 256 },
+  scene,
+  0.01,
+  Texture.NEAREST_SAMPLINGMODE // 既定のTRILINEARは細い枠線をぼかしやすい。NEARESTでピクセル境界を保つ
+);
+mgr.fogEnabled = true;
+
+for (let z = -10.0; z <= 10.0; z += 2.0) {
+  for (let x = -10.0; x <= 10.0; x += 2.0) {
+    const s = new Sprite("sp", mgr);
+    s.position = new Vector3(x, 0.0, z);
+    s.size = 1.0;
+    if (useRightHandedSystem) s.invertU = true;
+  }
+}
+
+let angle = 0.0;
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  angle += useRightHandedSystem ? 0.01 : -0.01;
+  const rotX = camera_x * Math.cos(angle) - camera_z * Math.sin(angle);
+  const rotZ = camera_z * Math.cos(angle) + camera_x * Math.sin(angle);
+  camera.position.set(rotX, camera_y, rotZ);
+  camera.setTarget(new Vector3(0.0, 0.0, 0.0));
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

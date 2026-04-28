@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture_witch.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/index.js",
+    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/",
+    "@babylonjs/loaders": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/index.js",
+    "@babylonjs/loaders/": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { applyDiffuse, applyDiffuseDataUrlTextures, applySmoothShading, applyUnlitDiffuseTexture, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const useLight = false;
+
+const MODEL_DIR = "./model/";
+
+const AMBIENT_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
+const DIRECTIONAL_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
+
+let image_loaded = false;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+const camera = new UniversalCamera("cam", new Vector3(0.0, 2.5, 5.0), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0; // 45deg
+camera.aspectRatio = canvas3d.width / canvas3d.height;
+camera.setTarget(new Vector3(0.0, 2.5, 0.0));
+
+if (useLight) {
+  const hemi = new HemisphericLight("h", new Vector3(0.0, 1.0, 0.0), scene);
+  hemi.diffuse = Color3.White();
+  hemi.groundColor = Color3.White();
+  hemi.intensity = 0.5 * AMBIENT_LIGHT_COEF;
+
+  // Threeでのdir.position.set(0.85, 0.8, 0.75) - BabylonのDirectionalLightは光線の進行方向 = -position（右手系時はnegate）
+  const dirVec = useRightHandedSystem
+    ? new Vector3(0.85, 0.8, 0.75).negate().normalize()
+    : new Vector3(0.85, -0.8, -0.75).normalize();
+  const dir = new DirectionalLight("d", dirVec, scene);
+  dir.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
+}
+
+let rotateX = 0.0;
+let rotateY = 0.0;
+let pivot = null; // 回転用。init成功で非null（image_loadedと同時に有効化）
+
+async function init() {
+  try {
+    pivot = new TransformNode("pivot", scene);
+    pivot.position.set(0.0, 2.5, 0.0);
+    const root = await loadObjMtl(scene, MODEL_DIR, "witch");
+    applyDiffuseDataUrlTextures(scene, root, [
+      { materialName: "kao", dataUrl: img_src[0] },
+      { materialName: "body", dataUrl: img_src[1] },
+      { materialName: "fire", dataUrl: img_src[2] },
+    ]);
+    convertMaterialsToLambert(root); // Babylon.jsにはThreeのMeshBasicMaterial相当のマテリアルクラスはない
+    if (useLight) {
+      applyDiffuse(root, 0.8, 0.8, 0.8);
+    } else {
+      applyDiffuse(root, 1.0, 1.0, 1.0);
+      applyUnlitDiffuseTexture(root); // ライト計算を切る
+    }
+    applySmoothShading(root);
+    root.scaling.setAll(0.015);
+    root.position.set(0.0, -2.5 + 2.5, 0.0); // ワールドでメッシュを2.5上げる
+    root.setParent(pivot);
+    image_loaded = true;
+  } catch (e) {
+    console.error(e);
+  }
+}
+init();
+
+runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), () => {
+  // 回転はimageのロード完了後に反映
+  if (image_loaded) {
+    const r = useRightHandedSystem ? 1.0 : -1.0;
+    const rotX = Matrix.RotationX(r * Tools.ToRadians(rotateX));
+    const rotY = Matrix.RotationY(r * Tools.ToRadians(rotateY));
+    const rotZ = Matrix.RotationZ(0.0);
+    pivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX))); // Rx*Ry*Rz
+  }
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(255, 0, 255)";
+  context.fillText("rotateX " + rotateX.toFixed(1), 0, 24);
+  context.fillText("rotateY " + rotateY.toFixed(1), 0, 48);
+});
+
+let mouseDown = false;
+let mouseX = 0;
+let mouseY = 0;
+canvas3d.addEventListener("pointerdown", (e) => {
+  mouseDown = true;
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+window.addEventListener("pointerup", () => {
+  mouseDown = false;
+});
+window.addEventListener("pointermove", (e) => {
+  if (!mouseDown) return;
+  rotateX -= (e.clientY - mouseY) / 2.0;
+  rotateY += (e.clientX - mouseX) / 2.0;
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); z-index:0; width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); z-index:1; pointer-events:none" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

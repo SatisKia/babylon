@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture_sample2.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, Effect, Engine, Material, Mesh, MeshBuilder, PostProcess, Scene, StandardMaterial, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+
+let focusDepth = 0.2;
+let focusRange = 0.8;
+let maxBlur = 0.005;
+const fogFar = 20.0;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+const camera_x = 0.0;
+const camera_y = 3.0;
+const camera_z = 6.0;
+const camera = new UniversalCamera("cam", new Vector3(camera_x, camera_y, camera_z), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0; // 45deg
+camera.setTarget(new Vector3(0.0, 0.0, 0.0));
+
+// 非線形深度（gl_FragCoord.z）を格納し、ThreeのDepthTexture＋DOFシェーダと同じ復元式を使えるようにする。
+// 深度RTはメッシュベースのため、スプライトではなくビルボード平面。
+const depthRenderer = scene.enableDepthRenderer(camera, true, false, Texture.NEAREST_SAMPLINGMODE);
+depthRenderer.getDepthMap();
+
+// Three.js 17sのDOFフラグメント相当（textureSampler = シーン色、depthSampler = 深度）
+Effect.ShadersStore["dofPixelShader"] = `
+  varying vec2 vUV;
+  uniform sampler2D textureSampler;
+  uniform sampler2D depthSampler;
+  uniform float cameraNear;
+  uniform float cameraFar;
+  uniform float fogFar;
+  uniform float focusDepth;
+  uniform float focusRange;
+  uniform float maxBlur;
+  void main(void) {
+    float fragCoordZ = texture2D(depthSampler, vUV).r;
+    float viewZ = (cameraNear * cameraFar) / ((cameraFar - cameraNear) * fragCoordZ - cameraFar);
+    float depthNorm = clamp(abs(viewZ) / fogFar, 0.0, 1.0);
+    float blur = abs(depthNorm - focusDepth) / focusRange;
+    float amount = clamp(blur, 0.0, 1.0) * maxBlur;
+    vec4 color = vec4(0.0);
+    float total = 0.0;
+    for (int dx = -1; dx <= 1; dx++) {
+      for (int dy = -1; dy <= 1; dy++) {
+        vec2 offset = vec2(float(dx), float(dy)) * amount;
+        color += texture2D(textureSampler, vUV + offset);
+        total += 1.0;
+      }
+    }
+    gl_FragColor = vec4(color.rgb / total, 1.0);
+  }
+`;
+
+const dofPost = new PostProcess(
+  "dof",
+  "dof",
+  ["cameraNear", "cameraFar", "fogFar", "focusDepth", "focusRange", "maxBlur"],
+  ["depthSampler"],
+  1.0,
+  camera
+);
+
+dofPost.onApply = (effect) => {
+  effect.setFloat("cameraNear", camera.minZ);
+  effect.setFloat("cameraFar", camera.maxZ);
+  effect.setFloat("fogFar", fogFar);
+  effect.setFloat("focusDepth", focusDepth);
+  effect.setFloat("focusRange", focusRange);
+  effect.setFloat("maxBlur", maxBlur);
+  effect.setTexture("depthSampler", depthRenderer.getDepthMap());
+};
+
+const planeTex = new Texture(img_src, scene, false, false, Texture.NEAREST_SAMPLINGMODE);
+planeTex.hasAlpha = true;
+planeTex.wrapU = Texture.CLAMP_ADDRESSMODE;
+planeTex.wrapV = Texture.CLAMP_ADDRESSMODE;
+planeTex.uScale = -1; // 右手座標系＋ビルボードでUVが左右・上下とも反転するのを補正
+planeTex.uOffset = 1; // 右手座標系＋ビルボードでUVが左右・上下とも反転するのを補正
+planeTex.vScale = -1; // 右手座標系＋ビルボードでUVが左右・上下とも反転するのを補正
+planeTex.vOffset = 1; // 右手座標系＋ビルボードでUVが左右・上下とも反転するのを補正
+const planeMaterial = new StandardMaterial("billboardMaterial", scene);
+planeMaterial.diffuseTexture = planeTex;
+planeMaterial.emissiveTexture = planeTex;
+planeMaterial.emissiveColor = Color3.White();
+planeMaterial.specularColor = Color3.Black();
+planeMaterial.disableLighting = true;
+planeMaterial.useAlphaFromDiffuseTexture = true;
+planeMaterial.transparencyMode = Material.MATERIAL_ALPHATEST;
+planeMaterial.alphaCutOff = 0.2;
+planeMaterial.backFaceCulling = false;
+
+for (let z = -10.0; z <= 10.0; z += 2.0) {
+  for (let x = -10.0; x <= 10.0; x += 2.0) {
+    const quad = MeshBuilder.CreatePlane("bb", { width: 1, height: 1 }, scene);
+    quad.position = new Vector3(x, 0.0, z);
+    quad.material = planeMaterial;
+    quad.billboardMode = Mesh.BILLBOARDMODE_ALL;
+  }
+}
+
+let angle = 0.0;
+
+const keys = new Set();
+window.addEventListener("keydown", (e) => keys.add(e.code));
+window.addEventListener("keyup", (e) => keys.delete(e.code));
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  if (keys.has("ArrowUp")) focusDepth += 0.01;
+  if (keys.has("ArrowDown")) focusDepth -= 0.01;
+  if (keys.has("ArrowLeft")) focusRange -= 0.01;
+  if (keys.has("ArrowRight")) focusRange += 0.01;
+  if (keys.has("KeyZ")) maxBlur -= 0.001;
+  if (keys.has("KeyX")) maxBlur += 0.001;
+
+  focusDepth = Math.min(Math.max(focusDepth, 0.0), 1.0);
+  focusRange = Math.min(Math.max(focusRange, 0.001), 1.0);
+  maxBlur = Math.max(0.0, maxBlur);
+
+  angle += useRightHandedSystem ? 0.012 : -0.012;
+  const rotX = camera_x * Math.cos(angle) - camera_z * Math.sin(angle);
+  const rotZ = camera_z * Math.cos(angle) + camera_x * Math.sin(angle);
+  camera.position.set(rotX, camera_y, rotZ);
+  camera.setTarget(new Vector3(0.0, 0.0, 0.0));
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(255, 0, 255)";
+  context.fillText("focusDepth " + focusDepth.toFixed(2), 0, 24);
+  context.fillText("focusRange " + focusRange.toFixed(2), 0, 48);
+  context.fillText("maxBlur " + maxBlur.toFixed(4), 0, 72);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script src="texture_sample2.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+  }
+}
+</script>
+<script type="module">
+import { Color4, Engine, Scene, Sprite, SpriteManager, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+const camera = new UniversalCamera("cam", new Vector3(0.0, 6.0, 6.0), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0; // 45deg
+camera.aspectRatio = canvas3d.width / canvas3d.height;
+camera.setTarget(new Vector3(0.0, 0.0, 0.0));
+
+const mgr = new SpriteManager(
+  "sprites",
+  img_src,
+  200,
+  { width: 256, height: 256 },
+  scene,
+  0.01,
+  Texture.NEAREST_SAMPLINGMODE // 既定のTRILINEARは細い枠線をぼかして消しやすい。NEARESTでピクセル境界を保つ。
+);
+mgr.fogEnabled = false; // フォグ有効時も枠線が溶けないようスプライトへフォグを掛けない（現状はフォグ無しでも無害）
+
+const sprites = [];
+const pos = [
+  [ 0.0, 0.5,  2.0],
+  [-1.5, 0.5,  0.0],
+  [ 1.5, 0.5,  0.0],
+  [-3.0, 0.5, -2.0],
+  [ 0.0, 0.5, -2.0],
+  [ 3.0, 0.5, -2.0],
+];
+for (const [x, y, z] of pos) {
+  const s = new Sprite("sp", mgr);
+  s.position = new Vector3(x, y, z);
+  s.size = 2.0;
+  if (useRightHandedSystem) s.invertU = true; // useRightHandedSystem時、スプライトのテクスチャUが左右反転するのを補正
+  sprites.push(s);
+}
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

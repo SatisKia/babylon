@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/index.js",
+    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/",
+    "@babylonjs/loaders": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/index.js",
+    "@babylonjs/loaders/": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const WAIT_1 = 60/*フレーム*/;
+const FRAME_INTERVAL_MS = 1000 / WAIT_1;
+
+const AMBIENT_LIGHT_COEF = 2.5; // d2js版と見た目が同じになるように係数をかける
+const DIRECTIONAL_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
+const BABYLON_LIGHT_SCALE = 0.22 * 2.0; // d2js版と見た目が同じになるように係数をかける
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(1.0, 1.0, 1.0, 1.0);
+
+const camera = new UniversalCamera("cam", new Vector3(0.0, 52.0, 10.0), scene);
+camera.minZ = 0.1;
+camera.maxZ = 1000.0;
+camera.fov = Math.PI / 4.0; // 45deg
+camera.setTarget(new Vector3(0.0, 50.0, 0.0));
+
+const hemi = new HemisphericLight("hemi", new Vector3(0.0, 1.0, 0.0), scene);
+hemi.diffuse = Color3.White();
+hemi.groundColor = Color3.White();
+hemi.intensity = 0.6 * AMBIENT_LIGHT_COEF * BABYLON_LIGHT_SCALE;
+
+// Threeでのdir.position.set(-0.85, 0.8, -0.75) - BabylonのDirectionalLightは光線の進行方向 = -position
+const dirVec = useRightHandedSystem
+  ? new Vector3(-0.85, 0.8, -0.75).negate().normalize()
+  : new Vector3(-0.85, -0.8, 0.75).normalize();
+const dir = new DirectionalLight("dir", dirVec, scene);
+dir.intensity = 0.5 * DIRECTIONAL_LIGHT_COEF * BABYLON_LIGHT_SCALE;
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  const camera_vx = 0.0;
+  const camera_vy = 0.0;
+  const camera_vz = 10.0;
+  const look_x = 0.0;
+  const look_y = 50.0;
+  const look_z = 0.0;
+  const camera_x = look_x + camera_vx;
+  const camera_y = look_y + camera_vy + 1.0; // 少し上から見下ろす
+  const camera_z = look_z + camera_vz;
+  camera.position.set(camera_x, camera_y, camera_z);
+  camera.setTarget(new Vector3(look_x, look_y, look_z));
+
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.strokeStyle = "rgb(0, 0, 0)";
+  context.strokeRect(0, 0, canvas2d.width - 1, canvas2d.height - 1);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>

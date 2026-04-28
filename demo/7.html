@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+  }
+}
+</script>
+<script type="module">
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Quaternion, Scene, StandardMaterial, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+
+const AMBIENT_LIGHT_COEF = 0.33; // d2js版と見た目が同じになるように係数をかける
+const DIRECTIONAL_LIGHT_COEF = 1.66; // d2js版と見た目が同じになるように係数をかける
+
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
+
+const engine = new Engine(canvas3d, true);
+engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+const scene = new Scene(engine);
+if (useRightHandedSystem) scene.useRightHandedSystem = true;
+scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
+
+const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 0.0), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0; // 45deg
+camera.aspectRatio = canvas3d.width / canvas3d.height;
+camera.setTarget(new Vector3(0.0, 0.0, useRightHandedSystem ? -1.0 : 1.0));
+
+const sphere = MeshBuilder.CreateSphere("s", { diameter: 3, segments: 64 }, scene);
+const material = new StandardMaterial("phongLike", scene);
+material.diffuseColor = Color3.White();
+material.specularColor = new Color3(0.5, 0.5, 0.5);
+material.specularPower = 50.0;
+sphere.material = material;
+sphere.position.set(0.0, 0.0, useRightHandedSystem ? -6.0 : 6.0);
+const rotS = useRightHandedSystem ? 1.0 : -1.0;
+const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
+const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
+const rotZ = Matrix.RotationZ(rotS * Tools.ToRadians(15.0));
+sphere.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
+
+const hemi = new HemisphericLight("h", new Vector3(0.0, 1.0, 0.0), scene);
+hemi.diffuse = Color3.White();
+hemi.groundColor = Color3.White();
+hemi.intensity = 0.6 * AMBIENT_LIGHT_COEF;
+// Three: dir.position.set(0.85, 0.8, 0.75) - BabylonのDirectionalLightは光線の進行方向 = -position（+positionを渡すと明るい位置が画面で反対側になる）
+const dirVec = useRightHandedSystem
+  ? new Vector3(0.85, 0.8, 0.75).negate().normalize()
+  : new Vector3(-0.85, -0.8, 0.75).normalize();
+const dir = new DirectionalLight("d", dirVec, scene);
+dir.intensity = 0.5 * DIRECTIONAL_LIGHT_COEF;
+
+runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+  scene.render();
+
+  // 2Dグラフィック画面の描画
+  const context = canvas2d.getContext("2d");
+  context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(255, 0, 255)";
+  context.fillText("Hello World !!", 0, 24);
+});
+</script>
+</head>
+<body>
+<div align="center">
+  <div style="position:relative">
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+  </div>
+</div>
+</body>
+</html>
