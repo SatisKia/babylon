@@ -59,8 +59,8 @@ export class Jiki {
   }
 
   update(up, down, left, right, useRightHandedSystem = false) {
-  	// 左手系では、右方向キーで+JIKI_RY_ADD、左方向キーで-JIKI_RY_ADD
-  	// 右手系では、左方向キーで+JIKI_RY_ADD、右方向キーで-JIKI_RY_ADD
+    // 左手系では、右方向キーで+JIKI_RY_ADD、左方向キーで-JIKI_RY_ADD
+    // 右手系では、左方向キーで+JIKI_RY_ADD、右方向キーで-JIKI_RY_ADD
     const ry_add = useRightHandedSystem ? left : right;
     const ry_sub = useRightHandedSystem ? right : left;
     let rx_flag = false;
