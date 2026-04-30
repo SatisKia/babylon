@@ -62,18 +62,18 @@ camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
 camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
-const model = MeshBuilder.CreateSphere("sph", { diameter: 3, segments: 64 }, scene);
+const sphere = MeshBuilder.CreateSphere("sph", { diameter: 3, segments: 64 }, scene);
 const material = new StandardMaterial("material", scene);
 material.specularColor = Color3.White();
 material.specularPower = 50.0;
 material.transparencyMode = 0;
-model.material = material;
-model.position.set(0.0, 0.0, -3.0);
+sphere.material = material;
+sphere.position.set(0.0, 0.0, -3.0);
 const rotS = useRightHandedSystem ? 1.0 : -1.0;
 const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
 const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
 const rotZ = Matrix.RotationZ(rotS * Tools.ToRadians(15.0));
-model.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
+sphere.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
 
 const hemi = new HemisphericLight("hemi", new Vector3(0.0, 1.0, 0.0), scene);
 hemi.diffuse = Color3.White();

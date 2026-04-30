@@ -31,11 +31,10 @@ const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 0.0), scene);
 camera.minZ = 0.1;
 camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
-camera.aspectRatio = canvas3d.width / canvas3d.height;
 camera.setTarget(new Vector3(0.0, 0.0, useRightHandedSystem ? -1.0 : 1.0));
 
-const model = MeshBuilder.CreatePlane("plane", { width: 2, height: 2 }, scene);
-if (useRightHandedSystem) model.flipFaces(false/*法線は反転させない*/); // 右手系＋Threeと同じ捲き順だと裏面扱いになるので反転（インデックスの入れ替えのみ）
+const mesh = MeshBuilder.CreatePlane("plane", { width: 2, height: 2 }, scene);
+if (useRightHandedSystem) mesh.flipFaces(false/*法線は反転させない*/); // 右手系＋Threeと同じ捲き順だと裏面扱いになるので反転（インデックスの入れ替えのみ）
 
 const texture = new Texture(img_src, scene, true, true, Texture.TRILINEAR_SAMPLINGMODE);
 texture.wrapU = Texture.WRAP_ADDRESSMODE;
@@ -50,14 +49,14 @@ material.albedoTexture = texture;
 material.albedoColor = Color3.White();
 material.transparencyMode = Material.MATERIAL_ALPHABLEND;
 material.useAlphaFromAlbedoTexture = true;
-model.material = material;
+mesh.material = material;
 
-model.position.set(0.0, 0.0, useRightHandedSystem ? -6.0 : 6.0);
+mesh.position.set(0.0, 0.0, useRightHandedSystem ? -6.0 : 6.0);
 const rotS = useRightHandedSystem ? 1.0 : -1.0;
 const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
 const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
 const rotZ = Matrix.RotationZ(Tools.ToRadians(15.0));
-model.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
+mesh.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
 
 let scroll = 0.0;
 let old_time = performance.now();

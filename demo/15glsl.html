@@ -16,87 +16,145 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, MirrorTexture, PBRMaterial, Plane, Quaternion, Scene, ShadowGenerator, Texture, Tools, TransformNode, UniversalCamera, Vector3, VertexBuffer, VertexData, Viewport } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Effect, Engine, HemisphericLight, Matrix, MeshBuilder, MirrorTexture, PBRMaterial, Plane, Quaternion, Scene, ShaderMaterial, ShadowGenerator, Texture, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyDiffuse, applyDiffuseDataUrlTextures, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const MODEL_DIR = "./model/";
 
-const useStereoTrans = false;
-const STEREO_TRANS = 0.2; // 位置ずらし
-const STEREO_ANGLE_DEG = 1.5; // トウイン
-
 const AMBIENT_LIGHT_COEF = 1.0;
 const DIRECTIONAL_LIGHT_COEF = 1.0;
 
-const GROUND_PLANE_SIZE = 200 * 0.033;
-const WATER_METALNESS = 0.12;
-const WATER_ROUGHNESS = 0.05;
-const WATER_CLEARCOAT = 0.92;
-const WATER_CLEARCOAT_ROUGHNESS = 0.03;
-const WATER_IOR = 1.333;
-
-const WATER_MESH_SEGMENTS_X = 192;
-const WATER_MESH_SEGMENTS_Z = 192;
-const WATER_SUBDIV = Math.max(WATER_MESH_SEGMENTS_X, WATER_MESH_SEGMENTS_Z);
-const WAVE_RIPPLE_DENSITY_X = 3.0;
-const WAVE_RIPPLE_DENSITY_Z = 3.0;
-const WAVE_ANIM_SPEED = 0.25;
-const WAVE_AMPLITUDE = 0.05;
-const WAVE_PHASE_RATIO = 0.7;
-const WAVE_FBM_SUM_MAX = 0.5;
-const WAVE_COMBINED_FREQ_X = WAVE_RIPPLE_DENSITY_X;
-const WAVE_COMBINED_FREQ_Z = WAVE_RIPPLE_DENSITY_Z;
-const WAVE_COMBINED_AMP_Z_RATIO = 0.2;
-const WAVE_COMBINED_SPEED = 1.5;
-const WAVE_COMBINED_NOISE_STRENGTH = 0.5;
-const WAVE_COMBINED_NOISE_AMP = 0.5;
-const WAVE_COMBINED_NOISE_U = 0.06;
-const WAVE_COMBINED_NOISE_TIME = 0.1;
+const GROUND_MODEL_SCALE = 0.033;
+const GROUND_PLANE_SIZE = 200 * GROUND_MODEL_SCALE;
+const WATER_METALNESS = 0.05;
+const WATER_ROUGHNESS = 0.15;
 
 let dispMesh = false;
 let meshObjRoot = null;
 let waveType = 0;
 
-function myRandom(ix, iy) {
-  const t = Math.sin(ix * 12.9898 + iy * 78.233) * 43758.5453123;
-  return t - Math.floor(t);
-}
-function combinedWave(x, zPlane, freq, amp, speedMul, elapseT, dx, dz, withNoise) {
-  const r = useRightHandedSystem ? 1.0 : -1.0;
-  let phase = (r * (x * dx + zPlane * dz)) * freq + elapseT * WAVE_COMBINED_SPEED * speedMul;
-  let a = amp;
-  if (withNoise) {
-    const ncx = (r * x) * dx * WAVE_COMBINED_NOISE_U;
-    const ncz = (r * zPlane) * dz * WAVE_COMBINED_NOISE_U + elapseT * WAVE_COMBINED_NOISE_TIME;
-    const scale = 1.0;
-    let nr = 0.0;
-    let ampN = 1.0;
-    let fr = 1.0;
-    for (let o = 0; o < 4; o++) {
-      const fbx = ncx * fr * scale;
-      const fby = ncz * fr * scale;
-      const fi = Math.floor(fbx);
-      const fj = Math.floor(fby);
-      const f = fbx - fi;
-      const g = fby - fj;
-      const ra = myRandom(fi, fj);
-      const rb = myRandom(fi + 1, fj);
-      const rc = myRandom(fi, fj + 1);
-      const rd = myRandom(fi + 1, fj + 1);
-      const u = f * f * (3.0 - 2.0 * f);
-      const v = g * g * (3.0 - 2.0 * g);
-      const sm = ra + (rb - ra) * u + (rc - ra) * v * (1 - u) + (rd - rb) * u * v;
-      nr += ampN * sm;
-      ampN *= 0.5;
-      fr *= 2.0;
-    }
-    const nv = (nr / WAVE_FBM_SUM_MAX) * WAVE_COMBINED_NOISE_STRENGTH;
-    phase += nv * Math.PI;
-    a *= 1.0 + nv * WAVE_COMBINED_NOISE_AMP;
+// Threeの15glslのWaterRippleReflectorShaderに相当（フラグメントで反射UVゆらぎ）
+Effect.ShadersStore["waterRippleReflectVertexShader"] = `
+  precision highp float;
+
+  attribute vec3 position;
+
+  uniform mat4 worldViewProjection;
+  uniform mat4 world;
+  uniform mat4 view;
+  uniform mat4 reflectionMatrix;
+
+  varying vec4 vReflectCoord;
+
+  void main(void) {
+    vec4 worldPos = world * vec4(position, 1.0);
+    vReflectCoord = reflectionMatrix * (view * worldPos);
+    gl_Position = worldViewProjection * vec4(position, 1.0);
   }
-  return Math.sin(phase) * a;
-}
+`;
+Effect.ShadersStore["waterRippleReflectFragmentShader"] = `
+  precision highp float;
+
+  uniform vec3 waterTint;
+  uniform sampler2D mirrorSampler;
+  uniform int uWaveType;
+  uniform float uFrequencyX, uFrequencyY;
+  uniform float uAmplitudeX, uAmplitudeY;
+  uniform float uSpeedX, uSpeedY;
+  uniform float uElapse;
+  uniform float uNoiseScale;
+  uniform float uNoiseTimeScale;
+  uniform float uNoiseStrength;
+  uniform float uNoiseAmplitude;
+
+  varying vec4 vReflectCoord;
+
+  float rand(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+  }
+
+  float smoothNoise(vec2 st) {
+    vec2 i = floor(st);
+    vec2 f = fract(st);
+    float a = rand(i);
+    float b = rand(i + vec2(1.0, 0.0));
+    float c = rand(i + vec2(0.0, 1.0));
+    float d = rand(i + vec2(1.0, 1.0));
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+  }
+
+  float fbmNoise(vec2 st, float scale) {
+    float value = 0.0;
+    float amplitude = 1.0;
+    float frequency = 1.0;
+    for (int i = 0; i < 4; i++) {
+      value += amplitude * smoothNoise(st * frequency * scale);
+      amplitude *= 0.5;
+      frequency *= 2.0;
+    }
+    return value;
+  }
+
+  float waveOffset(float x, float y, float freq, float amp, float speed, float time, float dx, float dy) {
+    if (uWaveType == 1) {
+      return sin(x * dx * freq + y * dy * freq + time * speed) * amp;
+    }
+    vec2 noiseCoord = vec2(x * dx * uNoiseScale, y * dy * uNoiseScale + time * uNoiseTimeScale);
+    float noiseValue = fbmNoise(noiseCoord, 1.0) * uNoiseStrength;
+    float w = sin(x * dx * freq + y * dy * freq + time * speed + noiseValue * 3.14159);
+    return w * amp * (1.0 + noiseValue * uNoiseAmplitude);
+  }
+
+  float blendOverlayCh(float base, float blend) {
+    return (base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend)));
+  }
+
+  vec3 blendOverlayRgb(vec3 base, vec3 blend) {
+    return vec3(
+      blendOverlayCh(base.r, blend.r),
+      blendOverlayCh(base.g, blend.g),
+      blendOverlayCh(base.b, blend.b)
+    );
+  }
+
+  void main(void) {
+    float offsetX = 0.0;
+    if (uFrequencyX != 0.0) {
+      if (uWaveType == 0) {
+        offsetX = sin(gl_FragCoord.x * uFrequencyX + uElapse * uSpeedX) * uAmplitudeX;
+      } else {
+        offsetX += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyX, uAmplitudeX, uSpeedX, uElapse, 1.0, 0.0);
+        offsetX += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyX * 0.7, uAmplitudeX * 0.5, uSpeedX * 0.8, uElapse, 0.7, 0.7);
+        offsetX += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyX * 1.5, uAmplitudeX * 0.3, uSpeedX * 1.2, uElapse, 0.3, 0.9);
+      }
+    }
+    float offsetY = 0.0;
+    if (uFrequencyY != 0.0) {
+      if (uWaveType == 0) {
+        offsetY = cos(gl_FragCoord.y * uFrequencyY + uElapse * uSpeedY) * uAmplitudeY;
+      } else {
+        offsetY += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyY, uAmplitudeY, uSpeedY, uElapse, 0.0, 1.0);
+        offsetY += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyY * 0.7, uAmplitudeY * 0.5, uSpeedY * 0.8, uElapse, 0.7, 0.7);
+        offsetY += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyY * 1.5, uAmplitudeY * 0.3, uSpeedY * 1.2, uElapse, 0.3, 0.9);
+      }
+    }
+
+    float denom = vReflectCoord.z;
+    if (abs(denom) < 1e-6) {
+      gl_FragColor = vec4(waterTint, 1.0);
+      return;
+    }
+    vec2 uv = vReflectCoord.xy / denom;
+    uv.y = 1.0 - uv.y;
+    uv.x += offsetX;
+    uv.y += offsetY;
+
+    vec4 base = texture2D(mirrorSampler, uv);
+    gl_FragColor = vec4(blendOverlayRgb(base.rgb, waterTint), 1.0);
+  }
+`;
 
 let image_loaded = false;
 
@@ -105,25 +163,17 @@ const canvas2d = document.getElementById("fuga_canvas");
 
 const engine = new Engine(canvas3d, true);
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
-engine.setSize(canvas3d.width, canvas3d.height);
 
 const scene = new Scene(engine);
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
 
 const lookY = 0.0;
-
-const camL = new UniversalCamera("camL", new Vector3(STEREO_TRANS, 0.0, 7.5), scene);
-const camR = new UniversalCamera("camR", new Vector3(-STEREO_TRANS, 0.0, 7.5), scene);
-for (const c of [camL, camR]) {
-  c.minZ = 0.1;
-  c.maxZ = 100.0;
-  c.fov = Math.PI / 4.0;
-  c.setTarget(new Vector3(0.0, lookY, 0.0));
-}
-camL.viewport = new Viewport(0.0, 0.0, 0.5, 1.0);
-camR.viewport = new Viewport(0.5, 0.0, 0.5, 1.0);
-scene.activeCameras = [camL, camR];
+const camera = new UniversalCamera("cam", new Vector3(0.0, lookY, 7.5), scene);
+camera.minZ = 0.1;
+camera.maxZ = 100.0;
+camera.fov = Math.PI / 4.0;
+camera.setTarget(new Vector3(0.0, lookY, 0.0));
 
 const scenePivot = new TransformNode("pivot", scene);
 scenePivot.position.set(0.0, lookY, 0.0);
@@ -143,30 +193,77 @@ const mirror = new MirrorTexture("mirror", 1024, scene, true, undefined, Texture
 mirror.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
 mirror.level = 1.5;
 
-const water = MeshBuilder.CreateGround(
-  "water",
+// 平坦な反射面（ゆらぎはシェーダ内のみ。Three.js 15glslと同系）
+const reflectPlane = MeshBuilder.CreateGround(
+  "rippleReflect",
+  { width: GROUND_PLANE_SIZE, height: GROUND_PLANE_SIZE, subdivisions: 1 },
+  scene
+);
+reflectPlane.position.y = 0.01;
+reflectPlane.setParent(scenePivot);
+
+const rippleMat = new ShaderMaterial(
+  "rippleReflectMat",
+  scene,
+  { vertex: "waterRippleReflect", fragment: "waterRippleReflect" },
   {
-    width: GROUND_PLANE_SIZE,
-    height: GROUND_PLANE_SIZE,
-    subdivisions: WATER_SUBDIV,
-  },
+    attributes: ["position", "normal", "uv"],
+    uniforms: [
+      "world",
+      "worldViewProjection",
+      "view",
+      "reflectionMatrix",
+      "waterTint",
+      "uWaveType",
+      "uFrequencyX",
+      "uFrequencyY",
+      "uAmplitudeX",
+      "uAmplitudeY",
+      "uSpeedX",
+      "uSpeedY",
+      "uElapse",
+      "uNoiseScale",
+      "uNoiseTimeScale",
+      "uNoiseStrength",
+      "uNoiseAmplitude",
+    ],
+    samplers: ["mirrorSampler"],
+    needAlphaBlending: false,
+    needAlphaTesting: false,
+  }
+);
+rippleMat.backFaceCulling = true;
+rippleMat.setTexture("mirrorSampler", mirror);
+rippleMat.setColor3("waterTint", new Color3(127 / 255, 127 / 255, 127 / 255));
+rippleMat.setInt("uWaveType", 0);
+rippleMat.setFloat("uFrequencyX", 0.1);
+rippleMat.setFloat("uFrequencyY", 0.1);
+rippleMat.setFloat("uAmplitudeX", 0.001 * 20);
+rippleMat.setFloat("uAmplitudeY", 0.001);
+rippleMat.setFloat("uSpeedX", 0.5);
+rippleMat.setFloat("uSpeedY", 0.5);
+rippleMat.setFloat("uElapse", 0.0);
+rippleMat.setFloat("uNoiseScale", 0.02);
+rippleMat.setFloat("uNoiseTimeScale", 0.1);
+rippleMat.setFloat("uNoiseStrength", 0.2);
+rippleMat.setFloat("uNoiseAmplitude", 0.5);
+reflectPlane.material = rippleMat;
+
+// 半透明の水面オーバーレイ（Threeのwater MeshStandardMaterialに相当）
+const water = MeshBuilder.CreateGround(
+  "waterTint",
+  { width: GROUND_PLANE_SIZE, height: GROUND_PLANE_SIZE, subdivisions: 1 },
   scene
 );
 water.position.y = 0.02;
 water.setParent(scenePivot);
 water.renderingGroupId = 0;
-water.markVerticesDataAsUpdatable(VertexBuffer.PositionKind, true);
-water.markVerticesDataAsUpdatable(VertexBuffer.NormalKind, true);
 
-const waterMaterial = new PBRMaterial("water", scene);
+const waterMaterial = new PBRMaterial("waterTintMat", scene);
 waterMaterial.metallic = WATER_METALNESS;
 waterMaterial.roughness = WATER_ROUGHNESS;
-waterMaterial.clearCoat.isEnabled = true;
-waterMaterial.clearCoat.intensity = WATER_CLEARCOAT;
-waterMaterial.clearCoat.roughness = WATER_CLEARCOAT_ROUGHNESS;
-waterMaterial.indexOfRefraction = WATER_IOR;
 waterMaterial.albedoColor = new Color3(128 / 255, 128 / 255, 128 / 255);
-waterMaterial.alpha = 0.58;
+waterMaterial.alpha = 0.55;
 waterMaterial.transparencyMode = 2;
 waterMaterial.backFaceCulling = false;
 waterMaterial.reflectionTexture = mirror;
@@ -176,7 +273,7 @@ water.receiveShadows = true;
 
 function refreshMirrorRenderList() {
   mirror.renderList.length = 0;
-  const skip = new Set([water]);
+  const skip = new Set([reflectPlane, water]);
   for (const m of scene.meshes) {
     if (!m || skip.has(m)) continue;
     if (m.getClassName?.() !== "Mesh") continue;
@@ -202,41 +299,12 @@ shadowGen.filter = ShadowGenerator.FILTER_PCF;
 shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH;
 shadowGen.bias = 0.0008;
 
-function updateStereoRig() {
-  const basePos = new Vector3(0.0, 0.0, 7.5);
-  const target = new Vector3(0.0, lookY, 0.0);
-  const halfAspect = (engine.getRenderWidth() * 0.5) / engine.getRenderHeight();
-  camL.aspectRatio = halfAspect;
-  camR.aspectRatio = halfAspect;
-
-  if (useStereoTrans) {
-    camL.position.set(basePos.x + STEREO_TRANS, basePos.y, basePos.z);
-    camR.position.set(basePos.x - STEREO_TRANS, basePos.y, basePos.z);
-    camL.setTarget(target);
-    camR.setTarget(target);
-  } else {
-    camL.position.copyFrom(basePos);
-    camR.position.copyFrom(basePos);
-    const baseDir = target.clone().subtract(basePos);
-    baseDir.normalize();
-    const up = Vector3.Up();
-    const rad = Tools.ToRadians(STEREO_ANGLE_DEG);
-    const rotL = Matrix.RotationAxis(up, rad);
-    const rotR = Matrix.RotationAxis(up, -rad);
-    const dirL = Vector3.TransformNormal(baseDir, rotL);
-    const dirR = Vector3.TransformNormal(baseDir, rotR);
-    const dist = 200.0;
-    camL.setTarget(basePos.clone().add(dirL.scale(dist)));
-    camR.setTarget(basePos.clone().add(dirR.scale(dist)));
-  }
-}
-
 async function init() {
   const specs = [
     { name: "witch", scale: 0.015, pos: [0.0, 0.05, 0.0], diffuse: 0.8 },
     { name: "cat", scale: 0.005, pos: [useRightHandedSystem ? -1.5 : 1.5, 0.4, 0.5] },
     { name: "swan", scale: 0.005, pos: [useRightHandedSystem ? 2.0 : -2.0, 2.0, 0.5], kaBlend: 0.35 },
-    { name: "mesh", scale: 0.033, pos: [0.0, 1.2, -1.5] },
+    { name: "mesh", scale: GROUND_MODEL_SCALE, pos: [0.0, 1.2, -1.5] },
   ];
   try {
     for (const s of specs) {
@@ -292,44 +360,9 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
   if (keys.has("KeyZ")) lightZ += LIGHT_STEP;
   if (keys.has("KeyX")) lightZ -= LIGHT_STEP;
 
-  elapse += WAVE_ANIM_SPEED;
-  const positions = water.getVerticesData(VertexBuffer.PositionKind, true);
-  if (positions) {
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const zPlane = positions[i + 2];
-      let hVal;
-      if (waveType === 0) {
-        const r = useRightHandedSystem ? 1.0 : -1.0;
-        hVal =
-          WAVE_AMPLITUDE *
-          Math.sin(x * WAVE_RIPPLE_DENSITY_X + r * elapse) *
-          Math.cos(zPlane * WAVE_RIPPLE_DENSITY_Z + r * elapse * WAVE_PHASE_RATIO);
-      } else {
-        const useNoise = waveType === 2;
-
-        const ax = WAVE_AMPLITUDE * 0.38;
-        const az = WAVE_AMPLITUDE * 0.38 * WAVE_COMBINED_AMP_Z_RATIO;
-
-        hVal = 0.0;
-        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_X, ax, 1.0, elapse, 1.0, 0.0, useNoise);
-        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_X * 0.7, ax * 0.5, 0.8, elapse, 0.7, 0.7, useNoise);
-        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_X * 1.5, ax * 0.3, 1.2, elapse, 0.3, 0.9, useNoise);
-        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_Z, az, 1.0, elapse, 0.0, 1.0, useNoise);
-        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_Z * 0.7, az * 0.5, 0.8, elapse, 0.7, 0.7, useNoise);
-        hVal += combinedWave(x, zPlane, WAVE_COMBINED_FREQ_Z * 1.5, az * 0.3, 1.2, elapse, 0.3, 0.9, useNoise);
-      }
-      positions[i + 1] = hVal;
-    }
-    water.updateVerticesData(VertexBuffer.PositionKind, positions, false, false);
-    const indices = water.getIndices();
-    if (indices) {
-      const normals = [];
-      VertexData.ComputeNormals(positions, indices, normals);
-      water.updateVerticesData(VertexBuffer.NormalKind, normals, false, false);
-    }
-    water.refreshBoundingInfo();
-  }
+  elapse += 1.0;
+  rippleMat.setFloat("uElapse", elapse);
+  rippleMat.setInt("uWaveType", waveType);
 
   if (image_loaded) {
     const r = useRightHandedSystem ? 1.0 : -1.0;
@@ -352,9 +385,9 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
     dir.direction.copyFrom(toT);
   }
 
-  water.computeWorldMatrix(true);
+  reflectPlane.computeWorldMatrix(true);
   {
-    const wm = water.getWorldMatrix();
+    const wm = reflectPlane.getWorldMatrix();
     const worldPos = Vector3.TransformCoordinates(Vector3.Zero(), wm);
     const worldNor = Vector3.TransformNormal(new Vector3(0.0, 1.0, 0.0), wm);
     worldNor.normalize();
@@ -362,7 +395,12 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
     mirror.mirrorPlane = Plane.FromPositionAndNormal(worldPos, worldNor);
   }
   refreshMirrorRenderList();
-  updateStereoRig();
+  camera.setTarget(new Vector3(0.0, lookY, 0.0));
+  // getReflectionTextureMatrixはscene.getProjectionMatrix()（PROJECTION_MODE）を参照する。
+  // render前は未初期化のため、カメラの投影を反映してから更新する。
+  scene.updateTransformMatrix(true);
+  rippleMat.setMatrix("view", camera.getViewMatrix());
+  rippleMat.setMatrix("reflectionMatrix", mirror.getReflectionTextureMatrix());
 
   scene.render();
 
@@ -408,8 +446,8 @@ window.addEventListener("keydown", (e) => {
 <body>
 <div align="center">
   <div style="position:relative">
-    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:1024px; height:480px"></canvas>
-    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="1024" height="480"></canvas>
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="640" height="480"></canvas>
   </div>
 </div>
 </body>

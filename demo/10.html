@@ -31,7 +31,6 @@ const camera = new UniversalCamera("cam", new Vector3(0.0, 6.0, 6.0), scene);
 camera.minZ = 0.1;
 camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
-camera.aspectRatio = canvas3d.width / canvas3d.height;
 camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
 const mgr = new SpriteManager(
@@ -45,7 +44,6 @@ const mgr = new SpriteManager(
 );
 mgr.fogEnabled = false; // フォグ有効時も枠線が溶けないようスプライトへフォグを掛けない（現状はフォグ無しでも無害）
 
-const sprites = [];
 const pos = [
   [ 0.0, 0.5,  2.0],
   [-1.5, 0.5,  0.0],
@@ -59,7 +57,6 @@ for (const [x, y, z] of pos) {
   s.position = new Vector3(x, y, z);
   s.size = 2.0;
   if (useRightHandedSystem) s.invertU = true; // useRightHandedSystem時、スプライトのテクスチャUが左右反転するのを補正
-  sprites.push(s);
 }
 
 runRenderLoop(engine, FRAME_INTERVAL_MS, () => {

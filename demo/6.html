@@ -46,7 +46,9 @@ camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
 camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
-const model = MeshBuilder.CreateBox("box", { size: 2, flat: useGouraud }, scene);
+const mesh = MeshBuilder.CreateBox("box", { size: 2, flat: useGouraud }, scene);
+
+// ThreeのMeshPhongMaterialに寄せた設定（diffuseColorのブレンド、specularColorとspecularPowerでハイライト）
 const material = new StandardMaterial("phongLike", scene);
 material.diffuseTexture = new Texture(img_src, scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + 線形（invertY false：Three flipY=true と同系の見え方）
 material.diffuseColor = Color3.Lerp(diffuse, Color3.White(), 1.0 - DIFFUSE_BLEND);
@@ -59,14 +61,14 @@ if (useEmission) {
   material.emissiveColor = Color3.Black();
   material.emissiveIntensity = 0.0;
 }
-model.material = material;
+mesh.material = material;
 
-model.position.set(0.0, 0.0, -3.0);
+mesh.position.set(0.0, 0.0, -3.0);
 const rotS = useRightHandedSystem ? 1.0 : -1.0;
 const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
 const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
 const rotZ = Matrix.RotationZ(rotS * Tools.ToRadians(15.0));
-model.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
+mesh.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
 
 const hemi = new HemisphericLight("h", new Vector3(0.0, 1.0, 0.0), scene);
 hemi.diffuse = Color3.White();

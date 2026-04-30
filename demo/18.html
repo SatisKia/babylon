@@ -21,6 +21,7 @@ const canvas2d = document.getElementById("fuga_canvas");
 
 const engine = new Engine(canvas3d, true);
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
 const scene = new Scene(engine);
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);

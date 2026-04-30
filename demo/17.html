@@ -17,7 +17,6 @@ import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
 
-// 0～1。合焦の目安（シーン奥行きに対する比率）。既定はカメラ〜原点付近に近い値
 let focusDepth = 0.2;
 let focusRange = 0.8;
 let maxBlur = 0.005;
@@ -40,8 +39,7 @@ const camera = new UniversalCamera("cam", new Vector3(camera_x, camera_y, camera
 camera.minZ = 0.1;
 // シーンに対してfarを絞ると深度の分解能が上がり、DOFの手前／奥の差が出やすい
 camera.maxZ = 40.0; // Threeでは100.0
-
-camera.fov = Math.PI / 4; // 45deg
+camera.fov = Math.PI / 4.0; // 45deg
 camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
 const pipeline = new DefaultRenderingPipeline("dof", false, scene, [camera]);

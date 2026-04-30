@@ -38,7 +38,7 @@ const camera_z = 6.0;
 const camera = new UniversalCamera("cam", new Vector3(camera_x, camera_y, camera_z), scene);
 camera.minZ = 0.1;
 camera.maxZ = 100.0;
-camera.fov = Math.PI / 4.0;
+camera.fov = Math.PI / 4.0; // 45deg
 camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
 const mgr = new SpriteManager(

@@ -31,7 +31,6 @@ const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 0.0), scene);
 camera.minZ = 0.1;
 camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
-camera.aspectRatio = canvas3d.width / canvas3d.height;
 camera.setTarget(new Vector3(0.0, 0.0, useRightHandedSystem ? -1.0 : 1.0));
 
 const mesh = new Mesh("quad", scene);

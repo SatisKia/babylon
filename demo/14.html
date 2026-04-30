@@ -22,7 +22,7 @@ import { runRenderLoop, useRightHandedSystem } from "./common.js";
 const MODEL_DIR = "./model/";
 
 const AMBIENT_LIGHT_COEF = 1.0;
-const DIRECTIONAL_LIGHT_COEF = 5.0;
+const DIRECTIONAL_LIGHT_COEF = 1.0;
 
 const GROUND_MODEL_SCALE = 0.033;
 const GROUND_PLANE_SIZE = 200 * GROUND_MODEL_SCALE;
@@ -41,10 +41,10 @@ if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
 
 const lookY = 0.0;
-const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 7.5), scene);
+const camera = new UniversalCamera("cam", new Vector3(0.0, lookY, 7.5), scene);
 camera.minZ = 0.1;
 camera.maxZ = 100.0;
-camera.fov = Math.PI / 4.0;
+camera.fov = Math.PI / 4.0; // 45deg
 camera.setTarget(new Vector3(0.0, lookY, 0.0));
 
 const scenePivot = new TransformNode("pivot", scene);
@@ -210,7 +210,6 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
     mirror.mirrorPlane = Plane.FromPositionAndNormal(pos, n);
   }
   refreshMirrorRenderList();
-  camera.aspectRatio = engine.getRenderWidth() / engine.getRenderHeight();
   camera.setTarget(new Vector3(0.0, lookY, 0.0));
 
   scene.render();

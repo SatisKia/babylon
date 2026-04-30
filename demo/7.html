@@ -33,7 +33,6 @@ const camera = new UniversalCamera("cam", new Vector3(0.0, 0.0, 0.0), scene);
 camera.minZ = 0.1;
 camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
-camera.aspectRatio = canvas3d.width / canvas3d.height;
 camera.setTarget(new Vector3(0.0, 0.0, useRightHandedSystem ? -1.0 : 1.0));
 
 const sphere = MeshBuilder.CreateSphere("s", { diameter: 3, segments: 64 }, scene);
@@ -53,6 +52,7 @@ const hemi = new HemisphericLight("h", new Vector3(0.0, 1.0, 0.0), scene);
 hemi.diffuse = Color3.White();
 hemi.groundColor = Color3.White();
 hemi.intensity = 0.6 * AMBIENT_LIGHT_COEF;
+
 // Three: dir.position.set(0.85, 0.8, 0.75) - BabylonのDirectionalLightは光線の進行方向 = -position（+positionを渡すと明るい位置が画面で反対側になる）
 const dirVec = useRightHandedSystem
   ? new Vector3(0.85, 0.8, 0.75).negate().normalize()

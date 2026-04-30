@@ -19,12 +19,13 @@ import { Camera, Color3, Color4, DirectionalLight, Engine, HemisphericLight, Mat
 import { applyDiffuse, applyDiffuseDataUrlTextures, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+const useWireframe = false;
+const WIREFRAME_GRAY = 0.5;
+
 const MODEL_DIR = "./model/";
 
 const AMBIENT_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
-const DIRECTIONAL_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
-
-const useWireframe = false;
+const DIRECTIONAL_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
 
 let image_loaded = false;
 
@@ -48,7 +49,6 @@ camera.minZ = 0.1;
 camera.maxZ = 100.0;
 camera.fov = Math.PI / 3.141592653589793;
 camera.fovMode = Camera.FOVMODE_VERTICAL;
-camera.aspectRatio = engine.getRenderWidth() / engine.getRenderHeight();
 camera.setTarget(new Vector3(0.0, lookY, 0.0));
 
 const scenePivot = new TransformNode("pivot", scene);
@@ -81,8 +81,6 @@ const shadowGen = new ShadowGenerator(2048, dir);
 shadowGen.filter = ShadowGenerator.FILTER_PCF;
 shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH; // 5×5 PCF
 shadowGen.bias = 0.0008;
-
-const WIREFRAME_GRAY = 0.5;
 
 async function init() {
   const specs = [
@@ -161,13 +159,10 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
     scenePivot.computeWorldMatrix(true);
   }
 
-  camera.aspectRatio = engine.getRenderWidth() / engine.getRenderHeight();
-
   lightHelper.position.set(lightX, lightY - lookY, lightZ);
   scenePivot.computeWorldMatrix(true);
   lightHelper.computeWorldMatrix(true);
   const transLight = lightHelper.getAbsolutePosition();
-
   dir.position.copyFrom(transLight);
   const tgt = new Vector3(0.0, lookY, 0.0);
   const toT = tgt.subtract(transLight);
@@ -215,8 +210,8 @@ window.addEventListener("pointermove", (e) => {
 <body>
 <div align="center">
   <div style="position:relative">
-    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); z-index:0; width:640px; height:480px"></canvas>
-    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); z-index:1; pointer-events:none" width="640" height="480"></canvas>
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="640" height="480"></canvas>
   </div>
 </div>
 </body>

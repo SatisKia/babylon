@@ -40,7 +40,6 @@ const camera = new UniversalCamera("cam", new Vector3(camera_x, camera_y, camera
 camera.minZ = 0.1;
 camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
-camera.aspectRatio = canvas3d.width / canvas3d.height;
 camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
 const mgr = new SpriteManager(
@@ -70,9 +69,11 @@ for (const [x, y, z] of pos) {
   if (useRightHandedSystem) s.invertU = true;
 }
 
+// カメラの回転
 let angle = 0.0;
-let hide2DFlag = false;
+
 let screenshotFlag = false;
+let hide2DFlag = false;
 
 const keys = new Set();
 window.addEventListener("keydown", (e) => {
@@ -95,52 +96,63 @@ runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
   // 2Dグラフィック画面の描画
   const context = canvas2d.getContext("2d");
   context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+
+  context.font = "24px 'MS Gothic', sans-serif";
+  context.fillStyle = "rgb(0, 255, 255)";
+  // Projectはengineのレンダーバッファ座標。setHardwareScalingLevel等でgetRenderWidth()がcanvas.widthと違うと2Dだけ画面外になる
+  const rw = engine.getRenderWidth();
+  const rh = engine.getRenderHeight();
+  worldPts.forEach((wp) => {
+    _tmpWorld.set(wp.x, wp.y, wp.z);
+    // scene.getTransformMatrix()は初回、setTransformMatrixがupdateFlagのundefined一致でスキップされ、Matrix.Zero()のままになり得る → ProjectがNaNになる
+    let rwP = engine.getRenderWidth();
+    let rhP = engine.getRenderHeight();
+    if (rwP <= 0 || rhP <= 0) {
+      const c = engine.getRenderingCanvas();
+      rwP = c ? c.width : 1;
+      rhP = c ? c.height : 1;
+    }
+    const vp = new Viewport(0, 0, rwP, rhP);
+    // esm.shの@babylonjs/coreでは静的Matrix.Multiplyが無いことがある → view.multiplyToRef(projection, out)でview×projection
+    camera.getViewMatrix().multiplyToRef(camera.getProjectionMatrix(), _viewProjection);
+    const pProj = Vector3.Project(_tmpWorld, Matrix.Identity(), _viewProjection, vp);
+    const sx = (pProj.x / rw) * canvas2d.width;
+    const sy = (pProj.y / rh) * canvas2d.height;
+    const dist = Vector3.Distance(camera.position, wp);
+    const wld = Vector3.Unproject(
+      new Vector3(pProj.x, pProj.y, pProj.z), // Vector3.Projectは既にビューポート上のピクセル座標を返す。NDCに戻すと二重変換で画面外に出る。
+      rwP,
+      rhP,
+      Matrix.Identity(),
+      camera.getViewMatrix(),
+      camera.getProjectionMatrix()
+    );
+    context.fillText(String(Math.round(dist * 100.0) / 100.0), sx, sy);
+    context.fillText(
+      [wld.x, wld.y, wld.z].map((n) => Math.round(n * 100.0) / 100.0).join(" "),
+      sx,
+      sy + 30.0
+    );
+  });
+
   context.font = "24px 'MS Gothic', sans-serif";
   context.fillStyle = "rgb(255, 0, 255)";
   context.fillText("Screenshot : [S]", 0, 456);
   context.fillText("Screenshot (Hide 2D) : [Shift]+[S]", 0, 480);
-  if (!hide2DFlag) {
-    context.fillStyle = "rgb(0, 255, 255)";
-    // Projectはengineのレンダーバッファ座標。setHardwareScalingLevel等でgetRenderWidth()がcanvas.widthと違うと2Dだけ画面外になる
-    const rw = engine.getRenderWidth();
-    const rh = engine.getRenderHeight();
-    worldPts.forEach((wp) => {
-      _tmpWorld.set(wp.x, wp.y, wp.z);
-      // scene.getTransformMatrix()は初回、setTransformMatrixがupdateFlagのundefined一致でスキップされ、Matrix.Zero()のままになり得る → ProjectがNaNになる
-      let rwP = engine.getRenderWidth();
-      let rhP = engine.getRenderHeight();
-      if (rwP <= 0 || rhP <= 0) {
-        const c = engine.getRenderingCanvas();
-        rwP = c ? c.width : 1;
-        rhP = c ? c.height : 1;
-      }
-      const vp = new Viewport(0, 0, rwP, rhP);
-      // esm.shの@babylonjs/coreでは静的Matrix.Multiplyが無いことがある → view.multiplyToRef(projection, out)でview×projection
-      camera.getViewMatrix().multiplyToRef(camera.getProjectionMatrix(), _viewProjection);
-      const pProj = Vector3.Project(_tmpWorld, Matrix.Identity(), _viewProjection, vp);
-      const sx = (pProj.x / rw) * canvas2d.width;
-      const sy = (pProj.y / rh) * canvas2d.height;
-      const dist = Vector3.Distance(camera.position, wp);
-      const wld = Vector3.Unproject(
-        new Vector3(pProj.x, pProj.y, pProj.z), // Vector3.Projectは既にビューポート上のピクセル座標を返す。NDCに戻すと二重変換で画面外に出る。
-        rwP,
-        rhP,
-        Matrix.Identity(),
-        camera.getViewMatrix(),
-        camera.getProjectionMatrix()
-      );
-      context.fillText(String(Math.round(dist * 100.0) / 100.0), sx, sy);
-      context.fillText(
-        [wld.x, wld.y, wld.z].map((n) => Math.round(n * 100.0) / 100.0).join(" "),
-        sx,
-        sy + 30.0
-      );
-    });
-  }
 
   if (screenshotFlag) {
     screenshotFlag = false;
-    const dataUrl = canvas3d.toDataURL("image/png");
+    const w = canvas3d.width;
+    const h = canvas3d.height;
+    const composite = document.createElement("canvas");
+    composite.width = w;
+    composite.height = h;
+    const cctx = composite.getContext("2d");
+    cctx.drawImage(canvas3d, 0, 0);
+    if (!hide2DFlag) {
+      cctx.drawImage(canvas2d, 0, 0, canvas2d.width, canvas2d.height, 0, 0, w, h);
+    }
+    const dataUrl = composite.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = dataUrl;
     a.download = "screenshot.png";
@@ -152,8 +164,8 @@ runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
 <body>
 <div align="center">
   <div style="position:relative">
-    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); z-index:0; width:640px; height:480px"></canvas>
-    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); z-index:1" width="640" height="480"></canvas>
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
   </div>
 </div>
 </body>

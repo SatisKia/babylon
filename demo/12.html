@@ -42,7 +42,6 @@ const camera = new UniversalCamera("cam", new Vector3(0.0, 2.5, 5.0), scene);
 camera.minZ = 0.1;
 camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
-camera.aspectRatio = canvas3d.width / canvas3d.height;
 camera.setTarget(new Vector3(0.0, 2.5, 0.0));
 
 if (useLight) {
@@ -61,12 +60,12 @@ if (useLight) {
 
 let rotateX = 0.0;
 let rotateY = 0.0;
-let pivot = null; // 回転用。init成功で非null（image_loadedと同時に有効化）
+let scenePivot = null; // 回転用。init成功で非null（image_loadedと同時に有効化）
 
 async function init() {
   try {
-    pivot = new TransformNode("pivot", scene);
-    pivot.position.set(0.0, 2.5, 0.0);
+    scenePivot = new TransformNode("pivot", scene);
+    scenePivot.position.set(0.0, 2.5, 0.0);
     const root = await loadObjMtl(scene, MODEL_DIR, "witch");
     applyDiffuseDataUrlTextures(scene, root, [
       { materialName: "kao", dataUrl: img_src[0] },
@@ -83,7 +82,7 @@ async function init() {
     applySmoothShading(root);
     root.scaling.setAll(0.015);
     root.position.set(0.0, -2.5 + 2.5, 0.0); // ワールドでメッシュを2.5上げる
-    root.setParent(pivot);
+    root.setParent(scenePivot);
     image_loaded = true;
   } catch (e) {
     console.error(e);
@@ -98,7 +97,7 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
     const rotX = Matrix.RotationX(r * Tools.ToRadians(rotateX));
     const rotY = Matrix.RotationY(r * Tools.ToRadians(rotateY));
     const rotZ = Matrix.RotationZ(0.0);
-    pivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX))); // Rx*Ry*Rz
+    scenePivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX))); // Rx*Ry*Rz
   }
 
   scene.render();
@@ -135,8 +134,8 @@ window.addEventListener("pointermove", (e) => {
 <body>
 <div align="center">
   <div style="position:relative">
-    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); z-index:0; width:640px; height:480px"></canvas>
-    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); z-index:1; pointer-events:none" width="640" height="480"></canvas>
+    <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="640" height="480"></canvas>
   </div>
 </div>
 </body>

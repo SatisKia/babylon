@@ -89,6 +89,7 @@ vd.indices = indices;
 vd.applyToMesh(mesh);
 if (useRightHandedSystem) mesh.flipFaces(false/*法線は反転させない*/); // 右手系＋Threeと同じ捲き順だと裏面扱いになるので反転（インデックスの入れ替えのみ）
 
+// 鏡面を実質オフにして、拡散＋テクスチャ中心にしているので、ThreeのMeshLambertMaterialに近い「マット寄り」の見え方を狙う
 const material = new StandardMaterial("lambertLike", scene);
 material.diffuseTexture = new Texture(img_src, scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + バイリニア（ThreeのgenerateMipmaps=false + LinearFilterに寄せる）
 material.specularColor = Color3.Black();
