@@ -58,6 +58,7 @@ Effect.ShadersStore["waterRippleReflectFragmentShader"] = `
 
   uniform vec3 waterTint;
   uniform sampler2D mirrorSampler;
+
   uniform int uWaveType;
   uniform float uFrequencyX, uFrequencyY;
   uniform float uAmplitudeX, uAmplitudeY;
@@ -103,8 +104,8 @@ Effect.ShadersStore["waterRippleReflectFragmentShader"] = `
     }
     vec2 noiseCoord = vec2(x * dx * uNoiseScale, y * dy * uNoiseScale + time * uNoiseTimeScale);
     float noiseValue = fbmNoise(noiseCoord, 1.0) * uNoiseStrength;
-    float w = sin(x * dx * freq + y * dy * freq + time * speed + noiseValue * 3.14159);
-    return w * amp * (1.0 + noiseValue * uNoiseAmplitude);
+    float wave = sin(x * dx * freq + y * dy * freq + time * speed + noiseValue * 3.14159);
+    return wave * amp * (1.0 + noiseValue * uNoiseAmplitude);
   }
 
   float blendOverlayCh(float base, float blend) {
