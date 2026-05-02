@@ -17,318 +17,25 @@
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, Sprite, SpriteManager, Texture, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
-import { _DIV, _MOD, GROUND_SIZE, JIKI_SPEED, Jiki, JikiJet, JikiShots, WAIT_1, modelBoundingRadius, projectWorldToNdc, quatLookAtXZ, quaternionJikiPose, rxRyDegFromForward, unprojectNdcToWorld } from "./gameCommon.js";
+import { _DIV, _MOD, Baku, checkHit, ENEMY01_SPEED, ENEMY02_SPEED, ENEMY_SHOT_RADIUS, ENEMY_SHOT_SPEED, ENEMY_TYPE_01, ENEMY_TYPE_02, ENEMY_Y_MIN, Enemy01, Enemy02, EnemyShot, GROUND_SIZE, Jiki, JikiJet, JikiShots, JIKI_SPEED, modelBoundingRadius, MyRandom, projectWorldToNdc, quaternionJikiPose, rxRyDegFromForward, unprojectNdcToWorld, WAIT_1 } from "./gameCommon.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const drawHitFlag = false;
 
 const MODEL_DIR = "./model/";
 
-const ENEMY_Y_MIN = 40.0;
-
-const BAKU_FRAME = (WAIT_1 / 4) | 0;
-
-const ENEMY_TYPE_01 = 0;
-const ENEMY_TYPE_02 = 1;
-
-const ENEMY01_SPEED = 1.0;
-const ENEMY01_ESCAPE = 50.0;
-const ENEMY01_OUT = 150.0;
-
-const ENEMY02_SPEED = 1.5;
-const ENEMY02_ESCAPE = 50.0;
-const ENEMY02_OUT = 150.0;
-
-const ENEMY_SHOT_SPEED = 0.5;
-const ENEMY_SHOT_RADIUS = 0.35 * 1.5;
-const ENEMY_SHOT_END = WAIT_1 * 2;
-
 const FRAME_INTERVAL_MS = 1000 / WAIT_1;
 
-function checkHit(x1, y1, z1, r1, x2, y2, z2, r2) {
-  const x = x1 - x2;
-  const y = y1 - y2;
-  const z = z1 - z2;
-  return Math.sqrt(x * x + y * y + z * z) < r1 + r2;
-}
+const AMBIENT_LIGHT_COEF = 2.5; // d2js版と見た目が同じになるように係数をかける
+const DIRECTIONAL_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
+const BABYLON_LIGHT_SCALE = 0.22 * 2.0; // d2js版と見た目が同じになるように係数をかける
 
-class MyRandom {
-  next(n) {
-    if (Math.random() < 0.5) {
-      return -Math.floor(Math.random() * n);
-    }
-    return Math.floor(Math.random() * n);
-  }
-
-  nextInt() {
-    if (Math.random() < 0.5) {
-      return -Math.floor(Math.random() * 0x80000000);
-    }
-    return Math.floor(Math.random() * 0x80000000);
-  }
-}
-
-function Enemy(self, type, x, y, z, vx, vy, vz, radius) {
-  self._type = type;
-  self._x = x;
-  self._y = y;
-  self._z = z;
-  self._tx = x + vx;
-  self._ty = y + vy;
-  self._tz = z + vz;
-  self._radius = radius;
-}
-
-class Enemy01 {
-  constructor(x, y, z, vx, vy, vz, radius, flag, jikiRef) {
-    Enemy(this, ENEMY_TYPE_01, x, y, z, vx, vy, vz, radius);
-    const d = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1.0;
-    this._vx = vx / d;
-    this._vy = vy / d;
-    this._vz = vz / d;
-    this._target_vx = this._vx;
-    this._target_vy = this._vy;
-    this._target_vz = this._vz;
-    this._flag = flag;
-    this._r = 0.0;
-    this._elapse = 0;
-    this._step = 0;
-    this._jikiRef = jikiRef;
-  }
-  update() {
-    const jiki = this._jikiRef;
-    if (this._step === 1) {
-      if (_MOD(this._elapse, _DIV(WAIT_1, 15)) === 0) {
-        this._target_vx *= 1.1;
-        this._target_vy *= 1.1;
-        this._target_vz *= 1.1;
-        this._vx = (this._vx + this._target_vx / 4.0) / 1.1;
-        this._vy = (this._vy + this._target_vy / 4.0) / 1.1;
-        this._vz = (this._vz + this._target_vz / 4.0) / 1.1;
-      }
-      this._r += ((this._flag ? -360.0 : 360.0) / _DIV(WAIT_1, 2));
-    }
-    this._x += this._vx * ENEMY01_SPEED;
-    this._y += this._vy * ENEMY01_SPEED;
-    this._z += this._vz * ENEMY01_SPEED;
-    const dx = this._x - jiki.x();
-    const dy = this._y - jiki.y();
-    const dz = this._z - jiki.z();
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (distance > ENEMY01_OUT) return false;
-    if (distance < ENEMY01_ESCAPE && this._step === 0) {
-      this._target_vx = -(this._vx / 2.0 + jiki.vx());
-      this._target_vy = 0.0;
-      this._target_vz = -(this._vz / 2.0 + jiki.vz());
-      this._step = 1;
-    }
-    this._elapse++;
-    return true;
-  }
-  damage() {
-    return true;
-  }
-  type() {
-    return ENEMY_TYPE_01;
-  }
-  x() {
-    return this._x;
-  }
-  y() {
-    return this._y;
-  }
-  z() {
-    return this._z;
-  }
-  tx() {
-    return this._tx;
-  }
-  ty() {
-    return this._ty;
-  }
-  tz() {
-    return this._tz;
-  }
-  radius() {
-    return this._radius;
-  }
-  r() {
-    return this._r;
-  }
-}
-
-class Enemy02 {
-  constructor(x, y, z, vx, vy, vz, radius, jikiRef, onEnemyShot) {
-    Enemy(this, ENEMY_TYPE_02, x, y, z, vx, vy, vz, radius);
-    const d = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1.0;
-    this._vx = vx / d;
-    this._vy = vy / d;
-    this._vz = vz / d;
-    this._r = 0.0;
-    this._step = 0;
-    this._jikiRef = jikiRef;
-    this._onEnemyShot = onEnemyShot;
-    this._lookQuat = quatLookAtXZ(this._vx, this._vz);
-  }
-  update() {
-    const jiki = this._jikiRef;
-    if (this._step === 1) {
-      this._r -= 180.0 / _DIV(WAIT_1, 4);
-      if (this._r <= -180.0) {
-        this._r = -180.0;
-        this._vx = -(this._vx - jiki.vx());
-        this._vy = 0.0;
-        this._vz = -(this._vz - jiki.vz());
-        this._step = 2;
-      }
-    } else {
-      this._x += this._vx * ENEMY02_SPEED;
-      this._y += this._vy * ENEMY02_SPEED;
-      this._z += this._vz * ENEMY02_SPEED;
-      const dx = this._x - jiki.x();
-      const dy = this._y - jiki.y();
-      const dz = this._z - jiki.z();
-      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (distance > ENEMY02_OUT) return false;
-      if (distance < ENEMY02_ESCAPE && this._step === 0) {
-        this._onEnemyShot(this._x, this._y, this._z);
-        this._step = 1;
-      }
-    }
-    return true;
-  }
-  damage() {
-    return true;
-  }
-  type() {
-    return ENEMY_TYPE_02;
-  }
-  x() {
-    return this._x;
-  }
-  y() {
-    return this._y;
-  }
-  z() {
-    return this._z;
-  }
-  tx() {
-    return this._tx;
-  }
-  ty() {
-    return this._ty;
-  }
-  tz() {
-    return this._tz;
-  }
-  radius() {
-    return this._radius;
-  }
-  r() {
-    return this._r;
-  }
-}
-
-class Baku {
-  constructor(x, y, z, vx, vy, vz) {
-    this._x = x;
-    this._y = y;
-    this._z = z;
-    this._vx = vx;
-    this._vy = vy;
-    this._vz = vz;
-    this._elapse = 0;
-  }
-  update() {
-    this._x += this._vx;
-    this._y += this._vy;
-    this._z += this._vz;
-    this._elapse++;
-    return this._elapse <= BAKU_FRAME;
-  }
-  x() {
-    return this._x;
-  }
-  y() {
-    return this._y;
-  }
-  z() {
-    return this._z;
-  }
-  trans() {
-    return (1.0 / BAKU_FRAME) * (BAKU_FRAME - (this._elapse - 1.0));
-  }
-}
-
-class EnemyShot {
-  constructor(x, y, z, tx, ty, tz, radius, jikiRef) {
-    this._x = x;
-    this._y = y;
-    this._z = z;
-    this._tx = tx;
-    this._ty = ty;
-    this._tz = tz;
-    let vx = tx - x;
-    let vy = ty - y;
-    let vz = tz - z;
-    const d = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1.0;
-    this._vx = (vx / d) * ENEMY_SHOT_SPEED;
-    this._vy = (vy / d) * ENEMY_SHOT_SPEED;
-    this._vz = (vz / d) * ENEMY_SHOT_SPEED;
-    this._radius = radius;
-    this._elapse = 0;
-    this._elapse2 = 0;
-    const jx = x - jikiRef.x();
-    const jy = y - jikiRef.y();
-    const jz = z - jikiRef.z();
-    this._distance = Math.sqrt(jx * jx + jy * jy + jz * jz);
-  }
-  update(jiki) {
-    this._x += this._vx;
-    this._y += this._vy;
-    this._z += this._vz;
-    const dx = this._x - jiki.x();
-    const dy = this._y - jiki.y();
-    const dz = this._z - jiki.z();
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (distance > this._distance) {
-      this._distance = distance;
-      this._elapse2++;
-      if (this._elapse2 > ENEMY_SHOT_END) return false;
-    } else {
-      this._elapse2 = 0;
-    }
-    this._elapse++;
-    return true;
-  }
-  x() {
-    return this._x;
-  }
-  y() {
-    return this._y;
-  }
-  z() {
-    return this._z;
-  }
-  tx() {
-    return this._tx;
-  }
-  ty() {
-    return this._ty;
-  }
-  tz() {
-    return this._tz;
-  }
-  radius() {
-    return this._radius;
-  }
-}
+const canvas3d = document.getElementById("hoge_canvas");
+const canvas2d = document.getElementById("fuga_canvas");
 
 const enemyHudProj = new Vector3();
 const hitProjNdc = new Vector3();
 const hitUnproj = new Vector3();
-const canvas3d = document.getElementById("hoge_canvas");
-const canvas2d = document.getElementById("fuga_canvas");
 
 function drawHit(context, wx, wy, wz, radiusWorld) {
   if (!drawHitFlag) return;
@@ -350,10 +57,6 @@ function drawHit(context, wx, wy, wz, radiusWorld) {
   context.arc(px, py, rPx, 0, Math.PI * 2.0);
   context.fill();
 }
-
-const AMBIENT_LIGHT_COEF = 2.5; // d2js版と見た目が同じになるように係数をかける
-const DIRECTIONAL_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
-const BABYLON_LIGHT_SCALE = 0.22 * 2.0; // d2js版と見た目が同じになるように係数をかける
 
 const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
@@ -380,10 +83,10 @@ hemi.groundColor = Color3.White();
 hemi.intensity = 0.6 * AMBIENT_LIGHT_COEF * BABYLON_LIGHT_SCALE;
 
 // Threeでのdir.position.set(-0.85, 0.8, -0.75) - BabylonのDirectionalLightは光線の進行方向 = -position
-const dirDir = useRightHandedSystem
+const dirVec = useRightHandedSystem
   ? new Vector3(-0.85, 0.8, -0.75).negate().normalize()
   : new Vector3(-0.85, -0.8, 0.75).normalize();
-const dir = new DirectionalLight("dir", dirDir, scene);
+const dir = new DirectionalLight("dir", dirVec, scene);
 dir.intensity = 0.5 * DIRECTIONAL_LIGHT_COEF * BABYLON_LIGHT_SCALE;
 
 const keys = {};

@@ -36,57 +36,57 @@ let waveType = 0;
 
 // Threeの15glslのWaterRippleReflectorShaderに相当（フラグメントで反射UVゆらぎ）
 Effect.ShadersStore["waterRippleReflectVertexShader"] = `
-  precision highp float;
+  precision highp float; // フラグメントと同等にfloatを高精度へ
 
-  attribute vec3 position;
+  attribute vec3 position; // メッシュのローカル頂点座標（Babylon既定のattribute名）
 
-  uniform mat4 worldViewProjection;
-  uniform mat4 world;
-  uniform mat4 view;
-  uniform mat4 reflectionMatrix;
+  uniform mat4 worldViewProjection; // ローカル → クリップ空間 の合成行列（描画）
+  uniform mat4 world; // ローカル → ワールド
+  uniform mat4 view; // ワールド → ビュー（カメラ）空間
+  uniform mat4 textureMatrix; // MirrorTexture.getReflectionTextureMatrix()由来の投射用行列（Threeの同名uniformに対応）
 
-  varying vec4 vReflectCoord;
+  varying vec4 vTextureCoord; // フラグメントへ：反射サンプル用の同次座標（実装では主にxy,zを使用）
 
-  void main(void) {
-    vec4 worldPos = world * vec4(position, 1.0);
-    vReflectCoord = reflectionMatrix * (view * worldPos);
-    gl_Position = worldViewProjection * vec4(position, 1.0);
+  void main(void) { // 各頂点1回：世界座標経由で反射用ベクトルを渡す
+    vec4 worldPos = world * vec4(position, 1.0); // ワールド原点基準の点
+    vTextureCoord = textureMatrix * (view * worldPos); // view空間まで持ち込んだ上で投射行列へ（エンジン仕様）
+    gl_Position = worldViewProjection * vec4(position, 1.0); // 画面上のクリップ座標
   }
 `;
 Effect.ShadersStore["waterRippleReflectFragmentShader"] = `
-  precision highp float;
+  precision highp float; // sampler 演算など float 精度指定（ESフラグメント必須に近い）
 
-  uniform vec3 waterTint;
-  uniform sampler2D mirrorSampler;
+  uniform vec3 color; // オーバーレイティント（Threeと同じuniform名）
+  uniform sampler2D tDiffuse; // MirrorTextureをバインドする反射カラー
 
-  uniform int uWaveType;
-  uniform float uFrequencyX, uFrequencyY;
-  uniform float uAmplitudeX, uAmplitudeY;
-  uniform float uSpeedX, uSpeedY;
-  uniform float uElapse;
-  uniform float uNoiseScale;
-  uniform float uNoiseTimeScale;
-  uniform float uNoiseStrength;
-  uniform float uNoiseAmplitude;
+  uniform int uWaveType; // 波モード種別（0/1/2）
+  uniform float uFrequencyX, uFrequencyY; // ピクセルベースゆらぎの周波数
+  uniform float uAmplitudeX, uAmplitudeY; // サンプルUVへ足すゆらぎの大きさ
+  uniform float uSpeedX, uSpeedY; // 時間に対する伝播速度係数
+  uniform float uElapse; // アニメ時間（JS側で増分）
+  uniform float uNoiseScale; // ノイズ座標スケール
+  uniform float uNoiseTimeScale; // ノイズの時間ドリフト
+  uniform float uNoiseStrength; // 位相ノイズの強さ
+  uniform float uNoiseAmplitude; // 振幅ノイズの強さ
 
-  varying vec4 vReflectCoord;
+  varying vec4 vTextureCoord; // 頂点シェーダからの同次座標（Babylonはzで除算してUV化）
 
-  float rand(vec2 st) {
+  float random(vec2 st) { // 擬似乱数（0～1）
     return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
   }
 
-  float smoothNoise(vec2 st) {
-    vec2 i = floor(st);
-    vec2 f = fract(st);
-    float a = rand(i);
-    float b = rand(i + vec2(1.0, 0.0));
-    float c = rand(i + vec2(0.0, 1.0));
-    float d = rand(i + vec2(1.0, 1.0));
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+  float smoothNoise(vec2 st) { // 格子補間ノイズ
+    vec2 i = floor(st); // セル原点
+    vec2 f = fract(st); // セル内座標
+    float a = random(i); // 四隅乱数
+    float b = random(i + vec2(1.0, 0.0));
+    float c = random(i + vec2(0.0, 1.0));
+    float d = random(i + vec2(1.0, 1.0));
+    vec2 u = f * f * (3.0 - 2.0 * f); // smoothstep
+    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y; // 双線形風
   }
 
-  float fbmNoise(vec2 st, float scale) {
+  float noise(vec2 st, float scale) { // 4オクターブFBM風
     float value = 0.0;
     float amplitude = 1.0;
     float frequency = 1.0;
@@ -98,37 +98,39 @@ Effect.ShadersStore["waterRippleReflectFragmentShader"] = `
     return value;
   }
 
-  float waveOffset(float x, float y, float freq, float amp, float speed, float time, float dx, float dy) {
-    if (uWaveType == 1) {
-      return sin(x * dx * freq + y * dy * freq + time * speed) * amp;
+  float wave(float x, float y, float freq, float amp, float speed, float time, float dx, float dy) { // Threeと同型
+    if (uWaveType == 1) { // 純sinの重ね用
+      float wave = sin(x * dx * freq + y * dy * freq + time * speed);
+      return wave * amp;
+    } else { // ノイズ変調（Type2向け。Type1は上でreturn）
+      vec2 noiseCoord = vec2(x * dx * uNoiseScale, y * dy * uNoiseScale + time * uNoiseTimeScale);
+      float noiseValue = noise(noiseCoord, 1.0) * uNoiseStrength;
+      float wave = sin(x * dx * freq + y * dy * freq + time * speed + noiseValue * 3.14159);
+      return wave * amp * (1.0 + noiseValue * uNoiseAmplitude);
     }
-    vec2 noiseCoord = vec2(x * dx * uNoiseScale, y * dy * uNoiseScale + time * uNoiseTimeScale);
-    float noiseValue = fbmNoise(noiseCoord, 1.0) * uNoiseStrength;
-    float wave = sin(x * dx * freq + y * dy * freq + time * speed + noiseValue * 3.14159);
-    return wave * amp * (1.0 + noiseValue * uNoiseAmplitude);
   }
 
-  float blendOverlayCh(float base, float blend) {
+  float blendOverlay(float base, float blend) { // 1chオーバーレイ
     return (base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend)));
   }
 
-  vec3 blendOverlayRgb(vec3 base, vec3 blend) {
+  vec3 blendOverlay(vec3 base, vec3 blend) { // RGB 各 ch
     return vec3(
-      blendOverlayCh(base.r, blend.r),
-      blendOverlayCh(base.g, blend.g),
-      blendOverlayCh(base.b, blend.b)
+      blendOverlay(base.r, blend.r),
+      blendOverlay(base.g, blend.g),
+      blendOverlay(base.b, blend.b)
     );
   }
 
-  void main(void) {
+  void main(void) { // ピクセルごと：オフセット計算 → 反射テクスチャ取得
     float offsetX = 0.0;
     if (uFrequencyX != 0.0) {
       if (uWaveType == 0) {
         offsetX = sin(gl_FragCoord.x * uFrequencyX + uElapse * uSpeedX) * uAmplitudeX;
       } else {
-        offsetX += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyX, uAmplitudeX, uSpeedX, uElapse, 1.0, 0.0);
-        offsetX += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyX * 0.7, uAmplitudeX * 0.5, uSpeedX * 0.8, uElapse, 0.7, 0.7);
-        offsetX += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyX * 1.5, uAmplitudeX * 0.3, uSpeedX * 1.2, uElapse, 0.3, 0.9);
+        offsetX += wave(gl_FragCoord.x, gl_FragCoord.y, uFrequencyX, uAmplitudeX, uSpeedX, uElapse, 1.0, 0.0);
+        offsetX += wave(gl_FragCoord.x, gl_FragCoord.y, uFrequencyX * 0.7, uAmplitudeX * 0.5, uSpeedX * 0.8, uElapse, 0.7, 0.7);
+        offsetX += wave(gl_FragCoord.x, gl_FragCoord.y, uFrequencyX * 1.5, uAmplitudeX * 0.3, uSpeedX * 1.2, uElapse, 0.3, 0.9);
       }
     }
     float offsetY = 0.0;
@@ -136,24 +138,24 @@ Effect.ShadersStore["waterRippleReflectFragmentShader"] = `
       if (uWaveType == 0) {
         offsetY = cos(gl_FragCoord.y * uFrequencyY + uElapse * uSpeedY) * uAmplitudeY;
       } else {
-        offsetY += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyY, uAmplitudeY, uSpeedY, uElapse, 0.0, 1.0);
-        offsetY += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyY * 0.7, uAmplitudeY * 0.5, uSpeedY * 0.8, uElapse, 0.7, 0.7);
-        offsetY += waveOffset(gl_FragCoord.x, gl_FragCoord.y, uFrequencyY * 1.5, uAmplitudeY * 0.3, uSpeedY * 1.2, uElapse, 0.3, 0.9);
+        offsetY += wave(gl_FragCoord.x, gl_FragCoord.y, uFrequencyY, uAmplitudeY, uSpeedY, uElapse, 0.0, 1.0);
+        offsetY += wave(gl_FragCoord.x, gl_FragCoord.y, uFrequencyY * 0.7, uAmplitudeY * 0.5, uSpeedY * 0.8, uElapse, 0.7, 0.7);
+        offsetY += wave(gl_FragCoord.x, gl_FragCoord.y, uFrequencyY * 1.5, uAmplitudeY * 0.3, uSpeedY * 1.2, uElapse, 0.3, 0.9);
       }
     }
 
-    float denom = vReflectCoord.z;
-    if (abs(denom) < 1e-6) {
-      gl_FragColor = vec4(waterTint, 1.0);
+    float denom = vTextureCoord.z; // Babylon反射マットでは透視除算にzを使う（Threeのwとは役割差に注意）
+    if (abs(denom) < 1e-6) { // 除算ブレーキ：特異点ではティント単色
+      gl_FragColor = vec4(color, 1.0);
       return;
     }
-    vec2 uv = vReflectCoord.xy / denom;
-    uv.y = 1.0 - uv.y;
-    uv.x += offsetX;
-    uv.y += offsetY;
+    vec2 uv = vTextureCoord.xy / denom; // 手動で射影UV化（texture2DProj相当を自前で）
+    uv.y = 1.0 - uv.y; // テクスチャ空間をエンジン慣習に合わせY反転
+    uv.x += offsetX; // 波で横方向シフト
+    uv.y += offsetY; // 縦方向シフト
 
-    vec4 base = texture2D(mirrorSampler, uv);
-    gl_FragColor = vec4(blendOverlayRgb(base.rgb, waterTint), 1.0);
+    vec4 base = texture2D(tDiffuse, uv); // 通常2Dサンプル（歪みは既にUVに含む）
+    gl_FragColor = vec4(blendOverlay(base.rgb, color), 1.0); // オーバーレイ合成・不透明
   }
 `;
 
@@ -184,7 +186,7 @@ let lightY = 7.5;
 let lightZ = 3.5;
 const LIGHT_STEP = 0.1;
 
-let rotateX = useRightHandedSystem ? 25.0 : -25.0;
+let rotateX = 25.0;
 let rotateY = 25.0;
 
 const lightHelper = new TransformNode("lightHelper", scene);
@@ -213,8 +215,8 @@ const rippleMat = new ShaderMaterial(
       "world",
       "worldViewProjection",
       "view",
-      "reflectionMatrix",
-      "waterTint",
+      "textureMatrix",
+      "color",
       "uWaveType",
       "uFrequencyX",
       "uFrequencyY",
@@ -228,14 +230,14 @@ const rippleMat = new ShaderMaterial(
       "uNoiseStrength",
       "uNoiseAmplitude",
     ],
-    samplers: ["mirrorSampler"],
+    samplers: ["tDiffuse"],
     needAlphaBlending: false,
     needAlphaTesting: false,
   }
 );
 rippleMat.backFaceCulling = true;
-rippleMat.setTexture("mirrorSampler", mirror);
-rippleMat.setColor3("waterTint", new Color3(127 / 255, 127 / 255, 127 / 255));
+rippleMat.setTexture("tDiffuse", mirror);
+rippleMat.setColor3("color", new Color3(127 / 255, 127 / 255, 127 / 255));
 rippleMat.setInt("uWaveType", 0);
 rippleMat.setFloat("uFrequencyX", 0.1);
 rippleMat.setFloat("uFrequencyY", 0.1);
@@ -366,9 +368,8 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
   rippleMat.setInt("uWaveType", waveType);
 
   if (image_loaded) {
-    const r = useRightHandedSystem ? 1.0 : -1.0;
-    const rotX = Matrix.RotationX(r * Tools.ToRadians(rotateX));
-    const rotY = Matrix.RotationY(r * Tools.ToRadians(rotateY));
+    const rotX = Matrix.RotationX(Tools.ToRadians(rotateX));
+    const rotY = Matrix.RotationY((useRightHandedSystem ? 1.0 : -1.0) * Tools.ToRadians(rotateY));
     const rotZ = Matrix.RotationZ(0.0);
     scenePivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX)));
     scenePivot.computeWorldMatrix(true);
@@ -401,7 +402,7 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
   // render前は未初期化のため、カメラの投影を反映してから更新する。
   scene.updateTransformMatrix(true);
   rippleMat.setMatrix("view", camera.getViewMatrix());
-  rippleMat.setMatrix("reflectionMatrix", mirror.getReflectionTextureMatrix());
+  rippleMat.setMatrix("textureMatrix", mirror.getReflectionTextureMatrix());
 
   scene.render();
 
@@ -431,8 +432,7 @@ window.addEventListener("pointerup", () => {
 });
 window.addEventListener("pointermove", (e) => {
   if (!mouseDown) return;
-  const r = useRightHandedSystem ? 1.0 : -1.0;
-  rotateX += r * (e.clientY - mouseY) / 2.0;
+  rotateX += (e.clientY - mouseY) / 2.0;
   rotateY += (e.clientX - mouseX) / 2.0;
   mouseX = e.clientX;
   mouseY = e.clientY;

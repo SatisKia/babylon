@@ -100,10 +100,10 @@ window.addEventListener("keyup", (e) => keys.delete(e.code));
 runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
   if (keys.has("ArrowUp")) pointLightPosY += 1.0;
   if (keys.has("ArrowDown")) pointLightPosY -= 1.0;
-  if (keys.has("ArrowLeft")) pointLightPosX += useRightHandedSystem ? 1.0 : -1.0;
-  if (keys.has("ArrowRight")) pointLightPosX -= useRightHandedSystem ? 1.0 : -1.0;
-  if (keys.has("KeyZ")) pointLightPosZ += 1.0;
-  if (keys.has("KeyX")) pointLightPosZ -= 1.0;
+  if (keys.has("ArrowLeft")) pointLightPosX -= 1.0;
+  if (keys.has("ArrowRight")) pointLightPosX += 1.0;
+  if (keys.has("KeyZ")) pointLightPosZ += useRightHandedSystem ? 1.0 : -1.0;
+  if (keys.has("KeyX")) pointLightPosZ -= useRightHandedSystem ? 1.0 : -1.0;
   pointLight.position.set(pointLightPosX, pointLightPosY, pointLightPosZ);
 
   scene.render();

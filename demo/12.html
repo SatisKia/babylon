@@ -93,9 +93,8 @@ init();
 runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), () => {
   // 回転はimageのロード完了後に反映
   if (image_loaded) {
-    const r = useRightHandedSystem ? 1.0 : -1.0;
-    const rotX = Matrix.RotationX(r * Tools.ToRadians(rotateX));
-    const rotY = Matrix.RotationY(r * Tools.ToRadians(rotateY));
+    const rotX = Matrix.RotationX(Tools.ToRadians(rotateX));
+    const rotY = Matrix.RotationY((useRightHandedSystem ? 1.0 : -1.0) * Tools.ToRadians(rotateY));
     const rotZ = Matrix.RotationZ(0.0);
     scenePivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX))); // Rx*Ry*Rz
   }
@@ -124,7 +123,7 @@ window.addEventListener("pointerup", () => {
 });
 window.addEventListener("pointermove", (e) => {
   if (!mouseDown) return;
-  rotateX -= (e.clientY - mouseY) / 2.0;
+  rotateX += (e.clientY - mouseY) / 2.0;
   rotateY += (e.clientX - mouseX) / 2.0;
   mouseX = e.clientX;
   mouseY = e.clientY;

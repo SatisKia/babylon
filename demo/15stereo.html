@@ -133,7 +133,7 @@ let lightY = 7.5;
 let lightZ = 3.5;
 const LIGHT_STEP = 0.1;
 
-let rotateX = useRightHandedSystem ? 25.0 : -25.0;
+let rotateX = 25.0;
 let rotateY = 25.0;
 
 const lightHelper = new TransformNode("lightHelper", scene);
@@ -332,9 +332,8 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
   }
 
   if (image_loaded) {
-    const r = useRightHandedSystem ? 1.0 : -1.0;
-    const rotX = Matrix.RotationX(r * Tools.ToRadians(rotateX));
-    const rotY = Matrix.RotationY(r * Tools.ToRadians(rotateY));
+    const rotX = Matrix.RotationX(Tools.ToRadians(rotateX));
+    const rotY = Matrix.RotationY((useRightHandedSystem ? 1.0 : -1.0) * Tools.ToRadians(rotateY));
     const rotZ = Matrix.RotationZ(0.0);
     scenePivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX)));
     scenePivot.computeWorldMatrix(true);
@@ -392,8 +391,7 @@ window.addEventListener("pointerup", () => {
 });
 window.addEventListener("pointermove", (e) => {
   if (!mouseDown) return;
-  const r = useRightHandedSystem ? 1.0 : -1.0;
-  rotateX += r * (e.clientY - mouseY) / 2.0;
+  rotateX += (e.clientY - mouseY) / 2.0;
   rotateY += (e.clientX - mouseX) / 2.0;
   mouseX = e.clientX;
   mouseY = e.clientY;

@@ -54,11 +54,12 @@ const hemi = new HemisphericLight("hemi", new Vector3(0.0, 1.0, 0.0), scene);
 hemi.diffuse = Color3.White();
 hemi.groundColor = Color3.White();
 hemi.intensity = 0.6 * AMBIENT_LIGHT_COEF * BABYLON_LIGHT_SCALE;
+
 // Threeでのdir.position.set(-0.85, 0.8, -0.75) - BabylonのDirectionalLightは光線の進行方向 = -position
-const dirDir = useRightHandedSystem
+const dirVec = useRightHandedSystem
   ? new Vector3(-0.85, 0.8, -0.75).negate().normalize()
   : new Vector3(-0.85, -0.8, 0.75).normalize();
-const dir = new DirectionalLight("dir", dirDir, scene);
+const dir = new DirectionalLight("dir", dirVec, scene);
 dir.intensity = 0.5 * DIRECTIONAL_LIGHT_COEF * BABYLON_LIGHT_SCALE;
 
 const keys = {};
@@ -86,8 +87,8 @@ function setGroundTiles() {
   for (let zz = -1; zz <= 1; zz++) {
     for (let xx = -1; xx <= 1; xx++) {
       if (!groundModels[i]) {
-        const tmp = groundTemplate.clone(`g${i}`, null, false);
-        groundModels[i] = tmp;
+        const m = groundTemplate.clone(`g${i}`, null, false);
+        groundModels[i] = m;
       }
       groundModels[i].position.set(gx + GROUND_SIZE * xx, 0.0, gz + GROUND_SIZE * zz);
       i++;
