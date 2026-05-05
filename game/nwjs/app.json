@@ -1,0 +1,12 @@
+{
+  "name": "babylon_game",
+  "version": "0.0.1",
+  "main": "9.html",
+  "window": {
+    "width": 640,
+    "height": 480,
+    "icon": "icon.png",
+    "resizable": false
+  },
+  "chromium-args": "--disable-devtools"
+}

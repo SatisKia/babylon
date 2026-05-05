@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "start": ".\\node_modules\\.bin\\nw ."
+  },
+  "nwbuild": {
+    "app": {
+      "fileDescription": "babylon_demo"
+    }
+  },
+  "devDependencies": {
+    "nw": "^0.79.1-sdk"
+  }
+}
