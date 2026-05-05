@@ -16,8 +16,7 @@ copy model\*.*         build\tmp\model
 set NODE_TLS_REJECT_UNAUTHORIZED=0
 
 cd build\tmp
-rem Merge package.json and install web deps
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$base=Get-Content '.\package.base.json' -Raw | ConvertFrom-Json; $app=Get-Content '.\app.json' -Raw | ConvertFrom-Json; $web=Get-Content '.\package.web.json' -Raw | ConvertFrom-Json; foreach($p in $app.PSObject.Properties){ $base | Add-Member -Force NoteProperty $p.Name $p.Value }; if($base.window -and $base.window.PSObject.Properties.Name -contains 'icon'){ $base.window.PSObject.Properties.Remove('icon') }; if($null -eq $base.dependencies){$base | Add-Member -Force NoteProperty dependencies @{} }; $base.dependencies=$web.dependencies; $base | Add-Member -Force NoteProperty nwbuild @{ mode='build'; glob=$false; version='0.79.1'; platform='win'; arch='x64'; app=@{ icon='icon.ico' } }; $json=$base | ConvertTo-Json -Depth 20; $out = Join-Path (Get-Location) 'package.json'; [System.IO.File]::WriteAllText($out, $json, (New-Object System.Text.UTF8Encoding($false)))"
+node ..\..\merge-package.js nwjs
 call npm install --production
 @echo on
 cd ..

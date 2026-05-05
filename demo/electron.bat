@@ -13,8 +13,7 @@ copy package-lock.json     build\tmp
 copy model\*.*             build\tmp\model
 
 cd build\tmp
-rem Merge package.json and install web deps
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$base=Get-Content '.\package.base.json' -Raw | ConvertFrom-Json; $web=Get-Content '.\package.web.json' -Raw | ConvertFrom-Json; if($null -eq $base.dependencies){$base | Add-Member -Force NoteProperty dependencies @{} }; $base.dependencies=$web.dependencies; $base | ConvertTo-Json -Depth 20 | Set-Content -Encoding UTF8 '.\package.json'"
+node ..\..\merge-package.js electron
 call npm install
 cd ..\..
 
