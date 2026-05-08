@@ -20,6 +20,20 @@ import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambe
 import { _DIV, _MOD, Baku, checkHit, ENEMY01_SPEED, ENEMY02_SPEED, ENEMY_SHOT_RADIUS, ENEMY_SHOT_SPEED, ENEMY_TYPE_01, ENEMY_TYPE_02, ENEMY_Y_MIN, Enemy01, Enemy02, EnemyShot, GROUND_SIZE, Jiki, JikiJet, JikiShots, JIKI_SPEED, modelBoundingRadius, MyRandom, projectWorldToNdc, quaternionJikiPose, rxRyDegFromForward, unprojectNdcToWorld, WAIT_1 } from "./gameCommon.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+function detectRuntime() {
+  // NW.js上で動作しているかの判定
+  const isNW = typeof globalThis.nw === "object" || typeof globalThis.nw?.Window === "function";
+  if (isNW) return "nwjs";
+
+  // Electron上で動作しているかの判定
+  const ua = navigator.userAgent || "";
+  const hasProcess = typeof globalThis.process === "object" && globalThis.process;
+  const isElectron = ua.includes("Electron") || (hasProcess && !!globalThis.process?.versions?.electron);
+  if (isElectron) return "electron";
+
+  return "browser";
+}
+
 const drawHitFlag = false;
 
 const MODEL_DIR = "./model/";
@@ -505,8 +519,10 @@ runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
   // 2Dグラフィック画面の描画
   const context = canvas2d.getContext("2d");
   context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+if (detectRuntime() === "browser") {
   context.strokeStyle = "rgb(0, 0, 0)";
   context.strokeRect(0, 0, canvas2d.width - 1, canvas2d.height - 1);
+}
 
   if (jikiModel) {
     drawHit(context, jiki.x(), jiki.y(), jiki.z(), jiki.radius());

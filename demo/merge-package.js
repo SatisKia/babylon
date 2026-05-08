@@ -11,14 +11,6 @@ if (mode === "nwjs") {
   if (base.window && typeof base.window === "object" && "icon" in base.window) {
     delete base.window.icon;
   }
-  base.nwbuild = {
-    mode: "build",
-    glob: false,
-    version: "0.79.1",
-    platform: "win",
-    arch: "x64",
-    app: { icon: "icon.ico" },
-  };
 }
 
 if (base.dependencies == null) base.dependencies = {};
