@@ -67,11 +67,11 @@ window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
 const jiki = new Jiki(1.0);
 let jikiModel = null;
-let groundTemplate = null;
+let groundModel = null;
 const groundModels = [];
 
 function setGroundTiles() {
-  if (!groundTemplate) {
+  if (!groundModel) {
     return;
   }
   const gx = Math.floor(jiki.x() / GROUND_SIZE) * GROUND_SIZE;
@@ -80,7 +80,7 @@ function setGroundTiles() {
   for (let zz = -1; zz <= 1; zz++) {
     for (let xx = -1; xx <= 1; xx++) {
       if (!groundModels[i]) {
-        const m = groundTemplate.clone(`g${i}`, null, false);
+        const m = groundModel.clone(`g${i}`, null, false);
         groundModels[i] = m;
       }
       groundModels[i].position.set(gx + GROUND_SIZE * xx, 0.0, gz + GROUND_SIZE * zz);
@@ -91,10 +91,10 @@ function setGroundTiles() {
 
 async function init() {
   try {
-    groundTemplate = await loadObjMtl(scene, MODEL_DIR, "ground");
-    convertMaterialsToLambert(groundTemplate);
-    applySmoothShading(groundTemplate);
-    groundTemplate.scaling.setAll(6.0);
+    groundModel = await loadObjMtl(scene, MODEL_DIR, "ground");
+    convertMaterialsToLambert(groundModel);
+    applySmoothShading(groundModel);
+    groundModel.scaling.setAll(6.0);
 
     jikiModel = await loadObjMtl(scene, MODEL_DIR, "jiki");
     convertMaterialsToLambert(jikiModel);
