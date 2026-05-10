@@ -8,11 +8,11 @@ const web = JSON.parse(fs.readFileSync("package.web.json", "utf8"));
 if (mode === "nwjs") {
   const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
   Object.assign(base, app);
-  if (base.window && typeof base.window === "object" && "icon" in base.window) {
+  const appHasIcon = app.window && typeof app.window === "object" && "icon" in app.window;
+  if (!appHasIcon && base.window && typeof base.window === "object" && "icon" in base.window) {
     delete base.window.icon;
   }
 }
 
-if (base.dependencies == null) base.dependencies = {};
-base.dependencies = web.dependencies;
+base.dependencies = { ...(base.dependencies || {}), ...(web.dependencies || {}) };
 fs.writeFileSync("package.json", JSON.stringify(base, null, 2) + "\n");
