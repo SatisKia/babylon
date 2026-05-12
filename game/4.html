@@ -14,7 +14,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene as BScene, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
@@ -35,11 +35,11 @@ const canvas2d = document.getElementById("fuga_canvas");
 const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
-const scene = new BScene(engine);
+const scene = new Scene(engine);
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(1.0, 1.0, 1.0, 1.0);
 scene.fogEnabled = true; // 既定値がtrueなので、明示的にtrueにする必要はない
-scene.fogMode = BScene.FOGMODE_LINEAR; // 既定値はFOGMODE_NONE
+scene.fogMode = Scene.FOGMODE_LINEAR; // 既定値はFOGMODE_NONE
 scene.fogStart = 50.0;
 scene.fogEnd = 500.0;
 scene.fogColor = Color3.White();
@@ -84,7 +84,7 @@ async function init() {
     if (useQuaternion) {
       jikiModel.rotationQuaternion = Quaternion.FromRotationMatrix(Matrix.RotationY(Math.PI));
     } else {
-      jikiModel.rotation.y = useRightHandedSystem ? Math.PI : -Math.PI;
+      jikiModel.rotation.y = -Math.PI;
     }
   } catch (e) {
     console.error(e);

@@ -102,9 +102,9 @@ let jetSpriteManager = null;
 let bakuSpriteManager = null;
 let enemyShotSpriteManager = null;
 let elapse = 0;
-let shotTemplate = null;
-let enemy01Template = null;
-let enemy02Template = null;
+let shotModel = null;
+let enemy01Model = null;
+let enemy02Model = null;
 let jikiShots = null;
 const shotModels = [];
 
@@ -169,7 +169,7 @@ function addEnemy01(flag) {
   const vx2 = jiki.x() + jiki.vx() * JIKI_SPEED * frame - x;
   const vz2 = jiki.z() + jiki.vz() * JIKI_SPEED * frame - z;
   const enemy = new Enemy01(x, y, z, vx2, vy, vz2, enemyRadius01 * 2.0, flag, jiki);
-  const model = enemy01Template.clone("e01", null, false);
+  const model = enemy01Model.clone("e01", null, false);
   enemies.push({ kind: ENEMY_TYPE_01, enemy, model });
 }
 
@@ -197,7 +197,7 @@ function addEnemy02(flag) {
   const vx2 = jiki.x() + jiki.vx() * JIKI_SPEED * frame - x;
   const vz2 = jiki.z() + jiki.vz() * JIKI_SPEED * frame - z;
   const enemy = new Enemy02(x, y, z, vx2, vy, vz2, enemyRadius02 * 2.0, jiki, addEnemyShot);
-  const model = enemy02Template.clone("e02", null, false);
+  const model = enemy02Model.clone("e02", null, false);
   enemies.push({ kind: ENEMY_TYPE_02, enemy, model });
 }
 
@@ -228,9 +228,9 @@ function addJetParticle(jet) {
 }
 
 function syncShotModels() {
-  if (!jikiShots || !shotTemplate) return;
+  if (!jikiShots || !shotModel) return;
   while (shotModels.length < jikiShots.size()) {
-    const m = shotTemplate.clone(`shot${shotModels.length}`, null, false);
+    const m = shotModel.clone(`shot${shotModels.length}`, null, false);
     shotModels.push(m);
   }
   while (shotModels.length > jikiShots.size()) {
@@ -276,32 +276,30 @@ async function init() {
     const jikiR = modelBoundingRadius(jikiModel) / 1.5;
     jiki = new Jiki(jikiR);
 
-    shotTemplate = await loadObjMtl(scene, MODEL_DIR, "jiki_shot");
-    convertMaterialsToLambert(shotTemplate);
-    applyDiffuse(shotTemplate, 1.0, 1.0, 0.0);
-    applyAmbient(shotTemplate, 2.0);
-    applySmoothShading(shotTemplate);
-    shotTemplate.scaling.setAll(0.01);
-    jikiShots = new JikiShots(modelBoundingRadius(shotTemplate) * 1.5);
+    shotModel = await loadObjMtl(scene, MODEL_DIR, "jiki_shot");
+    convertMaterialsToLambert(shotModel);
+    applyDiffuse(shotModel, 1.0, 1.0, 0.0);
+    applyAmbient(shotModel, 2.0);
+    applySmoothShading(shotModel);
+    shotModel.scaling.setAll(0.01);
+    jikiShots = new JikiShots(modelBoundingRadius(shotModel) * 1.5);
 
-    enemy01Template = await loadObjMtl(scene, MODEL_DIR, "enemy01");
-    convertMaterialsToLambert(enemy01Template);
-    applySmoothShading(enemy01Template);
-    enemy01Template.scaling.setAll(0.02);
-    enemyRadius01 = modelBoundingRadius(enemy01Template);
+    enemy01Model = await loadObjMtl(scene, MODEL_DIR, "enemy01");
+    convertMaterialsToLambert(enemy01Model);
+    applySmoothShading(enemy01Model);
+    enemy01Model.scaling.setAll(0.02);
+    enemyRadius01 = modelBoundingRadius(enemy01Model);
 
-    enemy02Template = await loadObjMtl(scene, MODEL_DIR, "enemy02");
-    convertMaterialsToLambert(enemy02Template);
-    applySmoothShading(enemy02Template);
-    enemy02Template.scaling.setAll(0.02);
-    enemyRadius02 = modelBoundingRadius(enemy02Template);
+    enemy02Model = await loadObjMtl(scene, MODEL_DIR, "enemy02");
+    convertMaterialsToLambert(enemy02Model);
+    applySmoothShading(enemy02Model);
+    enemy02Model.scaling.setAll(0.02);
+    enemyRadius02 = modelBoundingRadius(enemy02Model);
 
     setGroundTiles();
     for (let i = 0; i < 5; i++) addEnemy01();
   } catch (e) {
     console.error(e);
-    const el = document.getElementById("load-error");
-    if (el) el.hidden = false;
   }
 }
 init();
@@ -352,13 +350,13 @@ runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
     for (let i = jikiShots.size() - 1; i >= 0; i--) {
       const s = jikiShots.get(i);
       for (let j = enemies.length - 1; j >= 0; j--) {
-        const { enemy: en, model } = enemies[j];
+        const { enemy: e, model } = enemies[j];
         if (
-          checkHit(s.x(), s.y(), s.z(), s.radius(), en.x(), en.y(), en.z(), en.radius())
+          checkHit(s.x(), s.y(), s.z(), s.radius(), e.x(), e.y(), e.z(), e.radius())
         ) {
-          if (en.damage()) {
-            const t = en.type();
-            addBaku(en.x(), en.y(), en.z());
+          if (e.damage()) {
+            const t = e.type();
+            addBaku(e.x(), e.y(), e.z());
             model.dispose();
             enemies.splice(j, 1);
             {

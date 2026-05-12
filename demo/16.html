@@ -12,7 +12,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, Engine, Scene, Scene as BScene, Sprite, SpriteManager, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, Engine, Scene, Sprite, SpriteManager, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
@@ -27,7 +27,7 @@ const scene = new Scene(engine);
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
 
-scene.fogMode = BScene.FOGMODE_LINEAR;
+scene.fogMode = Scene.FOGMODE_LINEAR;
 scene.fogColor = new Color3(0.0, 0.0, 1.0);
 scene.fogStart = 5.0;
 scene.fogEnd = 20.0;

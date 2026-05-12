@@ -14,7 +14,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene as BScene, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
@@ -40,7 +40,7 @@ const canvas2d = document.getElementById("fuga_canvas");
 const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
-const scene = new BScene(engine);
+const scene = new Scene(engine);
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(1.0, 1.0, 1.0, 1.0);
 scene.fogEnabled = false; // フォグは無し

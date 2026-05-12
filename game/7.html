@@ -15,9 +15,9 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene as BScene, Sprite, SpriteManager, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene, Sprite, SpriteManager, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
-import { _DIV, _MOD, GROUND_SIZE, Jiki, JikiJet, JikiShots, WAIT_1, modelBoundingRadius, quaternionJikiPose, rxRyDegFromForward } from "./gameCommon.js";
+import { _DIV, _MOD, GROUND_SIZE, Jiki, JikiJet, JikiShots, modelBoundingRadius, quaternionJikiPose, rxRyDegFromForward, WAIT_1 } from "./gameCommon.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const MODEL_DIR = "./model/";
@@ -34,10 +34,10 @@ const canvas2d = document.getElementById("fuga_canvas");
 const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
-const scene = new BScene(engine);
+const scene = new Scene(engine);
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(1.0, 1.0, 1.0, 1.0);
-scene.fogMode = BScene.FOGMODE_LINEAR;
+scene.fogMode = Scene.FOGMODE_LINEAR;
 scene.fogStart = 50.0;
 scene.fogEnd = 500.0;
 scene.fogColor = Color3.White();
@@ -73,7 +73,7 @@ const groundModels = [];
 const jetList = [];
 let jetSpriteManager = null;
 let elapse = 0;
-let shotTemplate = null;
+let shotModel = null;
 let jikiShots = null;
 const shotModels = [];
 
@@ -118,13 +118,13 @@ async function init() {
     applySmoothShading(jikiModel);
     jikiModel.scaling.setAll(0.01);
 
-    shotTemplate = await loadObjMtl(scene, MODEL_DIR, "jiki_shot");
-    convertMaterialsToLambert(shotTemplate);
-    applyDiffuse(shotTemplate, 1.0, 1.0, 0.0);
-    applyAmbient(shotTemplate, 2.0);
-    applySmoothShading(shotTemplate);
-    shotTemplate.scaling.setAll(0.01);
-    jikiShots = new JikiShots(modelBoundingRadius(shotTemplate) * 1.5);
+    shotModel = await loadObjMtl(scene, MODEL_DIR, "jiki_shot");
+    convertMaterialsToLambert(shotModel);
+    applyDiffuse(shotModel, 1.0, 1.0, 0.0);
+    applyAmbient(shotModel, 2.0);
+    applySmoothShading(shotModel);
+    shotModel.scaling.setAll(0.01);
+    jikiShots = new JikiShots(modelBoundingRadius(shotModel) * 1.5);
 
     setGroundTiles();
   } catch (e) {
@@ -174,9 +174,9 @@ runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
       jikiShots.add(elapse, jiki.x(), jiki.y(), jiki.z(), jiki.vx(), jiki.vy(), jiki.vz(), jiki.rz());
     }
     jikiShots.update(false);
-    if (jikiShots && shotTemplate) {
+    if (jikiShots && shotModel) {
       while (shotModels.length < jikiShots.size()) {
-        const tmp = shotTemplate.clone(`shot${shotModels.length}`, null, false);
+        const tmp = shotModel.clone(`shot${shotModels.length}`, null, false);
         shotModels.push(tmp);
       }
       while (shotModels.length > jikiShots.size()) {

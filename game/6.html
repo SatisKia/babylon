@@ -15,7 +15,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene as BScene, Sprite, SpriteManager, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene, Sprite, SpriteManager, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { _DIV, _MOD, GROUND_SIZE, Jiki, JikiJet, WAIT_1 } from "./gameCommon.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
@@ -34,10 +34,10 @@ const canvas2d = document.getElementById("fuga_canvas");
 const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
-const scene = new BScene(engine);
+const scene = new Scene(engine);
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(1.0, 1.0, 1.0, 1.0);
-scene.fogMode = BScene.FOGMODE_LINEAR;
+scene.fogMode = Scene.FOGMODE_LINEAR;
 scene.fogStart = 50.0;
 scene.fogEnd = 500.0;
 scene.fogColor = Color3.White();

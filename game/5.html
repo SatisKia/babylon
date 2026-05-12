@@ -14,7 +14,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene as BScene, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { GROUND_SIZE, Jiki, WAIT_1 } from "./gameCommon.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
@@ -33,10 +33,10 @@ const canvas2d = document.getElementById("fuga_canvas");
 const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
-const scene = new BScene(engine);
+const scene = new Scene(engine);
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(1.0, 1.0, 1.0, 1.0);
-scene.fogMode = BScene.FOGMODE_LINEAR;
+scene.fogMode = Scene.FOGMODE_LINEAR;
 scene.fogStart = 50.0;
 scene.fogEnd = 500.0;
 scene.fogColor = Color3.White();
@@ -123,13 +123,11 @@ runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
   const camera_vy = -jiki.vy() * 10.0;
   const camera_vz = -jiki.vz() * 10.0;
   const look_x = jiki.x();
-  let look_y = jiki.y();
+  const look_y = jiki.y() + 1.0; // 自機の少し上
   const look_z = jiki.z();
   const camera_x = look_x + camera_vx;
-  let camera_y = look_y + camera_vy;
+  const camera_y = look_y + camera_vy + 1.0; // 少し上から見下ろす
   const camera_z = look_z + camera_vz;
-  look_y += 1.0; // 自機の少し上
-  camera_y += 2.0; // 少し上から見下ろす
   camera.position.set(camera_x, camera_y, camera_z);
   camera.setTarget(new Vector3(look_x, look_y, look_z));
 
