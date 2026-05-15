@@ -100,7 +100,7 @@ function addJetParticle(jet) {
   jetList.push({ jet, sprite });
 }
 
-async function init() {
+(async () => {
   try {
     if (typeof textureSrc === "undefined" || !textureSrc[0]) throw new Error("texture.js");
     jetSpriteManager = new SpriteManager("jet", textureSrc[0], 4000, { width: 128, height: 128 }, scene);
@@ -119,8 +119,7 @@ async function init() {
   } catch (e) {
     console.error(e);
   }
-}
-init();
+})();
 
 runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
   elapse++;

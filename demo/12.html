@@ -16,7 +16,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { applyDiffuse, applyDiffuseDataUrlTextures, applySmoothShading, applyUnlitDiffuseTexture, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { applyDiffuse, applyDiffuseMapsFromDataUrls, applySmoothShading, applyUnlitDiffuseTexture, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useLight = false;
@@ -62,21 +62,21 @@ let rotateX = 0.0;
 let rotateY = 0.0;
 let scenePivot = null; // 回転用。init成功で非null（image_loadedと同時に有効化）
 
-async function init() {
+(async () => {
   try {
     scenePivot = new TransformNode("pivot", scene);
     scenePivot.position.set(0.0, 2.5, 0.0);
     const root = await loadObjMtl(scene, MODEL_DIR, "witch");
-    applyDiffuseDataUrlTextures(scene, root, [
+    convertMaterialsToLambert(root); // Babylon.jsにはThreeのMeshBasicMaterial相当のマテリアルクラスはない
+    applyDiffuseMapsFromDataUrls(scene, root, [
       { materialName: "kao", dataUrl: img_src[0] },
       { materialName: "body", dataUrl: img_src[1] },
       { materialName: "fire", dataUrl: img_src[2] },
     ]);
-    convertMaterialsToLambert(root); // Babylon.jsにはThreeのMeshBasicMaterial相当のマテリアルクラスはない
     if (useLight) {
-      applyDiffuse(root, 0.8, 0.8, 0.8);
+      applyDiffuse(root, new Color3(0.8, 0.8, 0.8));
     } else {
-      applyDiffuse(root, 1.0, 1.0, 1.0);
+      applyDiffuse(root, Color3.White());
       applyUnlitDiffuseTexture(root); // ライト計算を切る
     }
     applySmoothShading(root);
@@ -87,8 +87,7 @@ async function init() {
   } catch (e) {
     console.error(e);
   }
-}
-init();
+})();
 
 runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), () => {
   // 回転はimageのロード完了後に反映

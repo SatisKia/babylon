@@ -16,7 +16,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, MirrorTexture, Plane, Quaternion, Scene, ShadowGenerator, StandardMaterial, Texture, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { applyDiffuse, applyDiffuseDataUrlTextures, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { applyDiffuse, applyDiffuseMapsFromDataUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const MODEL_DIR = "./model/";
@@ -126,7 +126,7 @@ shadowGen.filter = ShadowGenerator.FILTER_PCF;
 shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH; // 5×5 PCF
 shadowGen.bias = 0.0008;
 
-async function init() {
+(async () => {
   const specs = [
     { name: "witch", scale: 0.015, pos: [0.0, 0.05, 0.0], diffuse: 0.8 },
     { name: "cat", scale: 0.005, pos: [useRightHandedSystem ? -1.5 : 1.5, 0.4, 0.5] },
@@ -136,15 +136,15 @@ async function init() {
   try {
     for (const s of specs) {
       const root = await loadObjMtl(scene, MODEL_DIR, s.name);
+      convertMaterialsToLambert(root);
       if (s.name === "witch") {
-        applyDiffuseDataUrlTextures(scene, root, [
+        applyDiffuseMapsFromDataUrls(scene, root, [
           { materialName: "kao", dataUrl: img_src[0] },
           { materialName: "body", dataUrl: img_src[1] },
           { materialName: "fire", dataUrl: img_src[2] },
         ]);
       }
-      convertMaterialsToLambert(root);
-      if (s.diffuse !== undefined) applyDiffuse(root, s.diffuse, s.diffuse, s.diffuse);
+      if (s.diffuse !== undefined) applyDiffuse(root, new Color3(s.diffuse, s.diffuse, s.diffuse));
       if (s.kaBlend !== undefined) applyKaBlendToDiffuse(root, s.kaBlend);
       applySmoothShading(root);
       root.scaling.copyFromFloats(s.scale, s.scale, s.scale);
@@ -163,8 +163,7 @@ async function init() {
   } catch (e) {
     console.error(e);
   }
-}
-init();
+})();
 
 const keys = new Set();
 window.addEventListener("keydown", (e) => keys.add(e.code));

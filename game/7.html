@@ -103,7 +103,7 @@ function addJetParticle(jet) {
   jetList.push({ jet, sprite });
 }
 
-async function init() {
+(async () => {
   try {
     if (typeof textureSrc === "undefined" || !textureSrc[0]) throw new Error("texture.js");
     jetSpriteManager = new SpriteManager("jet", textureSrc[0], 4000, { width: 128, height: 128 }, scene);
@@ -120,7 +120,7 @@ async function init() {
 
     shotModel = await loadObjMtl(scene, MODEL_DIR, "jiki_shot");
     convertMaterialsToLambert(shotModel);
-    applyDiffuse(shotModel, 1.0, 1.0, 0.0);
+    applyDiffuse(shotModel, new Color3(1.0, 1.0, 0.0));
     applyAmbient(shotModel, 2.0);
     applySmoothShading(shotModel);
     shotModel.scaling.setAll(0.01);
@@ -130,8 +130,7 @@ async function init() {
   } catch (e) {
     console.error(e);
   }
-}
-init();
+})();
 
 runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
   elapse++;

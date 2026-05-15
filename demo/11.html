@@ -7,7 +7,8 @@
 <script type="importmap">
 {
   "imports": {
-    "@babylonjs/core": "https://esm.sh/@babylonjs/core@7.48.3"
+    "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/index.js",
+    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/"
   }
 }
 </script>
@@ -113,7 +114,7 @@ runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
       rhP = c ? c.height : 1;
     }
     const vp = new Viewport(0, 0, rwP, rhP);
-    // esm.shの@babylonjs/coreでは静的Matrix.Multiplyが無いことがある → view.multiplyToRef(projection, out)でview×projection
+    // 一部CDNの単一エントリ配信では静的Matrix.Multiplyが無いことがある → view.multiplyToRef(projection, out)でview×projection
     camera.getViewMatrix().multiplyToRef(camera.getProjectionMatrix(), _viewProjection);
     const pProj = Vector3.Project(_tmpWorld, Matrix.Identity(), _viewProjection, vp);
     const sx = (pProj.x / rw) * canvas2d.width;

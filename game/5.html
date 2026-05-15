@@ -89,7 +89,7 @@ function setGroundTiles() {
   }
 }
 
-async function init() {
+(async () => {
   try {
     groundModel = await loadObjMtl(scene, MODEL_DIR, "ground");
     convertMaterialsToLambert(groundModel);
@@ -105,8 +105,7 @@ async function init() {
   } catch (e) {
     console.error(e);
   }
-}
-init();
+})();
 
 runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
   jiki.update(

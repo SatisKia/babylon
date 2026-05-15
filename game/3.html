@@ -69,7 +69,7 @@ const jikiX = 0.0;
 const jikiY = 50.0;
 const jikiZ = 0.0;
 
-async function init() {
+(async () => {
   try {
     const groundModel = await loadObjMtl(scene, MODEL_DIR, "ground");
     convertMaterialsToLambert(groundModel);
@@ -90,8 +90,7 @@ async function init() {
   } catch (e) {
     console.error(e);
   }
-}
-init();
+})();
 
 runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
   const camera_vx = 0.0;

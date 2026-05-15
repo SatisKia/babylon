@@ -7,13 +7,18 @@
 {
   "imports": {
     "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/index.js",
-    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/"
+    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/",
+    "@babylonjs/loaders": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/index.js",
+    "@babylonjs/loaders/": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/"
   }
 }
 </script>
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Quaternion, Scene, StandardMaterial, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { applyDiffuse, applySmoothShading, applyStandardSpecular, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const MODEL_DIR = "./model/";
 
 const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
 
@@ -36,18 +41,23 @@ camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
 camera.setTarget(new Vector3(0.0, 0.0, useRightHandedSystem ? -1.0 : 1.0));
 
-const sphere = MeshBuilder.CreateSphere("s", { diameter: 3, segments: 64 }, scene);
-const material = new StandardMaterial("phongLike", scene);
-material.diffuseColor = new Color3(0.95, 0.95, 0.95);
-material.specularColor = new Color3(0.5, 0.5, 0.5);
-material.specularPower = 50.0;
-sphere.material = material;
-sphere.position.set(0.0, 0.0, useRightHandedSystem ? -6.0 : 6.0);
-const rotS = useRightHandedSystem ? 1.0 : -1.0;
-const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
-const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
-const rotZ = Matrix.RotationZ(rotS * Tools.ToRadians(15.0));
-sphere.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
+(async () => {
+  try {
+    const sphere = await loadObjMtl(scene, MODEL_DIR, "sphere");
+    applyDiffuse(sphere, new Color3(0.95, 0.95, 0.95)); // StandardMaterialのdiffuseColorに相当
+    applyStandardSpecular(sphere, new Color3(0.5, 0.5, 0.5), 50.0); // StandardMaterialのspecularColor/specularPowerに相当
+    applySmoothShading(sphere);
+    sphere.scaling.setAll(0.015);
+    sphere.position.set(0.0, 0.0, useRightHandedSystem ? -6.0 : 6.0);
+    const rotS = useRightHandedSystem ? 1.0 : -1.0;
+    const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
+    const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
+    const rotZ = Matrix.RotationZ(rotS * Tools.ToRadians(15.0));
+    sphere.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
+  } catch (e) {
+    console.error(e);
+  }
+})();
 
 const hemi = new HemisphericLight("h", new Vector3(0.0, 1.0, 0.0), scene);
 hemi.diffuse = Color3.White();

@@ -2,29 +2,6 @@ import { Color3, LoadAssetContainerAsync, StandardMaterial, Texture, TransformNo
 import { MTLFileLoader } from "@babylonjs/loaders/OBJ/mtlFileLoader.js";
 import "@babylonjs/loaders/OBJ/objFileLoader.js"; // OBJローダー読み込みで@babylonjs/loaders側がRegisterSceneLoaderPluginを実行する
 
-// MTLマテリアル名に対応する拡散テクスチャをdata URLで差し替える
-export function applyDiffuseDataUrlTextures(scene, root, materialDataUrlByName) {
-  const dataUrlMap = {};
-  for (const entry of materialDataUrlByName) {
-    dataUrlMap[entry.materialName] = entry.dataUrl;
-  }
-  if (!dataUrlMap) return;
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    const mat = mesh.material;
-    if (!mat || !mat.name) continue;
-    const url = dataUrlMap[mat.name];
-    if (url == null || typeof url !== "string") continue;
-    const old = mat.diffuseTexture || mat.albedoTexture;
-    if (old) old.dispose();
-    // MTLFileLoader.INVERT_TEXTURE_Y: MTLのmap_Kdと同じY反転。falseのままだとOBJのUV向きと一致せず貼り付きが壊れて見える
-    const tex = new Texture(url, scene, false, MTLFileLoader.INVERT_TEXTURE_Y, Texture.TRILINEAR_SAMPLINGMODE);
-    if ("diffuseTexture" in mat) mat.diffuseTexture = tex;
-    else if ("albedoTexture" in mat) mat.albedoTexture = tex;
-  }
-}
-
 export async function loadObjMtl(scene, basePath, modelName) {
   const path = basePath.endsWith("/") ? basePath : `${basePath}/`;
   const container = await LoadAssetContainerAsync(`${modelName}.obj`, scene, {
@@ -56,6 +33,7 @@ export async function loadObjMtl(scene, basePath, modelName) {
   return root;
 }
 
+// 配下メッシュのマテリアルを、共有しないStandardMaterialに差し替え、テクスチャ・拡散色・環境色などを引き継ぎつつ、鏡面をほぼ無効化（黒い鏡面色・低いspecularPower）して拡散寄りの見え方にそろえる
 export function convertMaterialsToLambert(root) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
@@ -64,8 +42,11 @@ export function convertMaterialsToLambert(root) {
     const material = mesh.material;
     if (!material) continue;
     oldMaterials.add(material);
-    const std = new StandardMaterial(`${mesh.name}_lambert`, mesh.getScene());
     const any = material;
+    // MTL名を維持しておくと、convertのあとにapplyDiffuseMapsFromDataUrlsを実行してもmaterialNameで引くことができる
+    const raw = any.name != null ? String(any.name).trim() : "";
+    const stdName = raw || `${mesh.name}_lambert`;
+    const std = new StandardMaterial(stdName, mesh.getScene());
     if (any.diffuseTexture) std.diffuseTexture = any.diffuseTexture;
     else if (any.albedoTexture) std.diffuseTexture = any.albedoTexture;
     if (any.diffuseColor) std.diffuseColor = any.diffuseColor.clone();
@@ -87,7 +68,43 @@ export function convertMaterialsToLambert(root) {
   }
 }
 
+// MTLマテリアル名に対応する拡散テクスチャをdata URLで差し替える（convertMaterialsToLambertの前後どちらでも可。後ならconvert側で名前を維持すること）
+export function applyDiffuseMapsFromDataUrls(scene, root, materialDataUrlByName) {
+  const dataUrlMap = {};
+  for (const entry of materialDataUrlByName) {
+    dataUrlMap[entry.materialName] = entry.dataUrl;
+  }
+  if (!dataUrlMap) return;
+  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+  for (const mesh of meshes) {
+    const material = mesh.material;
+    if (!material || !material.name) continue;
+    const url = dataUrlMap[material.name];
+    if (url == null || typeof url !== "string") continue;
+    const old = material.diffuseTexture || material.albedoTexture;
+    if (old) old.dispose();
+    // MTLFileLoader.INVERT_TEXTURE_Y: MTLのmap_Kdと同じY反転。falseのままだとOBJのUV向きと一致せず貼り付きが壊れて見える
+    const tex = new Texture(url, scene, false, MTLFileLoader.INVERT_TEXTURE_Y, Texture.TRILINEAR_SAMPLINGMODE);
+    if ("diffuseTexture" in material) material.diffuseTexture = tex;
+    else if ("albedoTexture" in material) material.albedoTexture = tex;
+  }
+}
+
+// StandardMaterialのみを対象に、specularColorとspecularPowerを渡された値で一括設定する
+export function applyStandardSpecular(root, specularColor, specularPower) {
+  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+  for (const mesh of meshes) {
+    const material = mesh.material;
+    if (!material || material.getClassName?.() !== "StandardMaterial") continue;
+    material.specularColor.copyFrom(specularColor);
+    material.specularPower = specularPower;
+  }
+}
+
 // 拡散テクスチャをライティングなしで表示（emissive経由でアルベド相当を出す）
+// ※アルベド（albedo）：照明計算に入る前の、面のベースとなる色（テクスチャならベースの画素色）。BabylonではalbedoColor/albedoTextureがそれに相当。PBRではBase Colorとほぼ同義。古典的マテリアルではdiffuseColor/diffuseTextureに近い。
 export function applyUnlitDiffuseTexture(root) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
@@ -101,14 +118,15 @@ export function applyUnlitDiffuseTexture(root) {
   }
 }
 
-export function applyDiffuse(root, r, g, b) {
+// 各メッシュのdiffuseColorまたはalbedoColorを、指定のColor3にそろえる
+export function applyDiffuse(root, diffuseColor) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
   for (const mesh of meshes) {
     const material = mesh.material;
     if (!material) continue;
-    if (material.diffuseColor) material.diffuseColor.set(r, g, b);
-    else if (material.albedoColor) material.albedoColor.set(r, g, b);
+    if (material.diffuseColor) material.diffuseColor.copyFrom(diffuseColor);
+    else if (material.albedoColor) material.albedoColor.copyFrom(diffuseColor);
   }
 }
 
@@ -132,6 +150,7 @@ export function applyKaBlendToDiffuse(root, weight) {
   }
 }
 
+// 拡散／アルベド色を基準にemissiveColorをambient倍した色にし、環境光による明るさの近似を足す
 export function applyAmbient(root, ambient) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
@@ -145,6 +164,7 @@ export function applyAmbient(root, ambient) {
   }
 }
 
+// 位置・インデックスから頂点法線を再計算し、同一座標付近の分裂頂点で法線を平均してからNormalKindを書き戻し、面の境が滑らかに見えるようにする
 export function applySmoothShading(root) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
