@@ -31,6 +31,8 @@ const GROUND_PLANE_SIZE = 200 * GROUND_MODEL_SCALE;
 const WATER_METALNESS = 0.05;
 const WATER_ROUGHNESS = 0.15;
 
+const WAVE_ANIM_SPEED = 1.0;
+
 let dispMesh = false;
 let meshObjRoot = null;
 let waveType = 0;
@@ -131,10 +133,11 @@ class WaterShadowRipplePlugin extends MaterialPluginBase {
   constructor(material, state) {
     super(material, "WaterShadowRipple", 200, {}, true, false);
     this._state = state;
-    this.registerForExtraEvents = true;
-    this._enable(true);
+    this.registerForExtraEvents = true; // これがないとhardBindForSubMeshが呼ばれない
+    this._enable(true); // プラグインを有効化し、シェーダ再生成の対象にする
   }
 
+  // PBRマテリアルのUniform Buffer（UBO）に載せるfloat一覧を宣言
   getUniforms() {
     return {
       ubo: [
@@ -154,6 +157,8 @@ class WaterShadowRipplePlugin extends MaterialPluginBase {
     };
   }
 
+  // フラグメントシェーダ向けに、Babylon標準PBRシェーダへコード片を差し込むフック
+  // computeShadowWithPCF1/3/5(vPositionFromLightN, ...)の呼び出しを検出し、perturbLightPosで包む
   getCustomCode(shaderType) {
     if (shaderType !== "fragment") return null;
     // customCodeはprocessCodeAfterIncludes（include 展開後）で走る。
@@ -162,23 +167,16 @@ class WaterShadowRipplePlugin extends MaterialPluginBase {
     return {
       // shadowsFragmentFunctionsより前だとMaterial UBOのuniformが未宣言になる
       CUSTOM_FRAGMENT_DEFINITIONS: WATER_RIPPLE_FUNCTIONS + WATER_SHADOW_RIPPLE_FUNCTIONS,
-      "!shadow=computeShadowWithPCF5\\(vPositionFromLight(\\d+),":
+      "!shadow=computeShadowWithPCF5\\(vPositionFromLight(\\d+),": // キーが"!"で始まると、正規表現マッチ＋置換
         "shadow=computeShadowWithPCF5(perturbLightPos(vPositionFromLight$1),",
-      "!shadow=computeShadowWithPCF3\\(vPositionFromLight(\\d+),":
+      "!shadow=computeShadowWithPCF3\\(vPositionFromLight(\\d+),": // キーが"!"で始まると、正規表現マッチ＋置換
         "shadow=computeShadowWithPCF3(perturbLightPos(vPositionFromLight$1),",
-      "!shadow=computeShadowWithPCF1\\(vPositionFromLight(\\d+),":
+      "!shadow=computeShadowWithPCF1\\(vPositionFromLight(\\d+),": // キーが"!"で始まると、正規表現マッチ＋置換
         "shadow=computeShadowWithPCF1(perturbLightPos(vPositionFromLight$1),",
     };
   }
 
-  hardBindForSubMesh(uniformBuffer) {
-    this._updateRippleUniforms(uniformBuffer);
-  }
-
-  bindForSubMesh(uniformBuffer) {
-    this._updateRippleUniforms(uniformBuffer);
-  }
-
+  // UBOに毎回値を書き込む内部ヘルパー（オーバーライドではない）
   _updateRippleUniforms(uniformBuffer) {
     const s = this._state;
     uniformBuffer.updateFloat("uWaveType", s.waveType);
@@ -193,6 +191,16 @@ class WaterShadowRipplePlugin extends MaterialPluginBase {
     uniformBuffer.updateFloat("uNoiseTimeScale", 0.1);
     uniformBuffer.updateFloat("uNoiseStrength", 0.2);
     uniformBuffer.updateFloat("uNoiseAmplitude", 0.5);
+  }
+
+  // サブメッシュごとに「必ず」UBOを埋める（registerForExtraEvents経由で呼ばれる）
+  hardBindForSubMesh(uniformBuffer) {
+    this._updateRippleUniforms(uniformBuffer);
+  }
+
+  // 通常のマテリアルバインド時に呼ばれる
+  bindForSubMesh(uniformBuffer) {
+    this._updateRippleUniforms(uniformBuffer);
   }
 }
 
@@ -223,12 +231,15 @@ Effect.ShadersStore["waterRippleReflectFragmentShader"] = /*glsl*/`
   uniform float uAmplitudeX, uAmplitudeY; // サンプルUVへ足すゆらぎの大きさ
 
   varying vec4 vTextureCoord; // 頂点シェーダからの同次座標（Babylonはzで除算してUV化）
-` + WATER_RIPPLE_UNIFORM_DECL + WATER_RIPPLE_FUNCTIONS + `
+
+  ${WATER_RIPPLE_UNIFORM_DECL}
+  ${WATER_RIPPLE_FUNCTIONS}
+
   float blendOverlay(float base, float blend) {
     return (base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend)));
   }
 
-  vec3 blendOverlay(vec3 base, vec3 blend) { // RGB 各 ch
+  vec3 blendOverlay(vec3 base, vec3 blend) { // RGB各ch
     return vec3(
       blendOverlay(base.r, blend.r),
       blendOverlay(base.g, blend.g),
@@ -458,7 +469,7 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
   if (keys.has("KeyZ")) lightZ += LIGHT_STEP;
   if (keys.has("KeyX")) lightZ -= LIGHT_STEP;
 
-  elapse += 1.0;
+  elapse += WAVE_ANIM_SPEED;
   rippleState.elapse = elapse;
   rippleState.waveType = waveType;
   rippleMat.setFloat("uElapse", elapse);
@@ -495,6 +506,7 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
     mirror.mirrorPlane = Plane.FromPositionAndNormal(worldPos, worldNor);
   }
   refreshMirrorRenderList();
+
   camera.setTarget(new Vector3(0.0, lookY, 0.0));
   // getReflectionTextureMatrixはscene.getProjectionMatrix()（PROJECTION_MODE）を参照する。
   // render前は未初期化のため、カメラの投影を反映してから更新する。

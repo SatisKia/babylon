@@ -462,6 +462,7 @@ export class JikiShots {
   }
 }
 
+// 敵の共通プロパティを設定する関数
 function Enemy(self, type, x, y, z, vx, vy, vz, radius) {
   self._type = type;
   self._x = x;
@@ -473,6 +474,7 @@ function Enemy(self, type, x, y, z, vx, vy, vz, radius) {
   self._radius = radius;
 }
 
+// 敵1
 export class Enemy01 {
   constructor(x, y, z, vx, vy, vz, radius, flag, jikiRef) {
     Enemy(this, ENEMY_TYPE_01, x, y, z, vx, vy, vz, radius);
@@ -551,6 +553,7 @@ export class Enemy01 {
   }
 }
 
+// 敵2
 export class Enemy02 {
   constructor(x, y, z, vx, vy, vz, radius, jikiRef, onEnemyShot) {
     Enemy(this, ENEMY_TYPE_02, x, y, z, vx, vy, vz, radius);
@@ -637,6 +640,7 @@ export class Enemy02 {
   }
 }
 
+// 爆発
 export class Baku {
   constructor(x, y, z, vx, vy, vz) {
     this._x = x;
@@ -668,6 +672,7 @@ export class Baku {
   }
 }
 
+// 敵弾
 export class EnemyShot {
   constructor(x, y, z, tx, ty, tz, radius, jikiRef) {
     this._x = x;

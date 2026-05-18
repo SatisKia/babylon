@@ -143,6 +143,7 @@ const mirror = new MirrorTexture("mirror", 1024, scene, true, undefined, Texture
 mirror.clearColor = new Color4(0.0, 0.0, 1.0, 1.0);
 mirror.level = 1.5;
 
+// 細分割メッシュのYを毎フレーム更新（Three.js版と同様、波面のみ）
 const water = MeshBuilder.CreateGround(
   "water",
   {
@@ -173,6 +174,12 @@ waterMaterial.reflectionTexture = mirror;
 waterMaterial.reflectionTexture.level = 1.45;
 water.material = waterMaterial;
 water.receiveShadows = true;
+
+// 反射平面を設定
+mirror.mirrorPlane = Plane.FromPositionAndNormal(
+  new Vector3(0.0, lookY + water.position.y, 0.0),
+  new Vector3(0.0, -1.0, 0.0)
+);
 
 function refreshMirrorRenderList() {
   mirror.renderList.length = 0;
@@ -351,14 +358,13 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
     dir.direction.copyFrom(toT);
   }
 
-  water.computeWorldMatrix(true);
+  // 反射平面を更新
   {
-    const wm = water.getWorldMatrix();
-    const worldPos = Vector3.TransformCoordinates(Vector3.Zero(), wm);
-    const worldNor = Vector3.TransformNormal(new Vector3(0.0, 1.0, 0.0), wm);
-    worldNor.normalize();
-    worldNor.scaleInPlace(-1);
-    mirror.mirrorPlane = Plane.FromPositionAndNormal(worldPos, worldNor);
+    const wm = scenePivot.getWorldMatrix();
+    const mirrorPos = Vector3.TransformCoordinates(new Vector3(0.0, water.position.y, 0.0), wm);
+    const mirrorNor = Vector3.TransformNormal(new Vector3(0.0, -1.0, 0.0), wm);
+    mirrorNor.normalize();
+    mirror.mirrorPlane = Plane.FromPositionAndNormal(mirrorPos, mirrorNor);
   }
   refreshMirrorRenderList();
   updateStereoRig();

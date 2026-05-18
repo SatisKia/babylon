@@ -47,23 +47,28 @@ camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 const depthRenderer = scene.enableDepthRenderer(camera, true, false, Texture.NEAREST_SAMPLINGMODE);
 depthRenderer.getDepthMap();
 
-// Three.js 17sのDOFフラグメント相当（textureSampler = シーン色、depthSampler = 深度）
-Effect.ShadersStore["dofPixelShader"] = `
-  varying vec2 vUV;
+// Three.js 17glslのDOFフラグメント相当（textureSampler = シーン色、depthSampler = 深度）
+Effect.ShadersStore["dofPixelShader"] = /*glsl*/`
   uniform sampler2D textureSampler;
   uniform sampler2D depthSampler;
+
   uniform float cameraNear;
   uniform float cameraFar;
   uniform float fogFar;
   uniform float focusDepth;
   uniform float focusRange;
   uniform float maxBlur;
+
+  varying vec2 vUV; // Babylonでは、変数名はvUVで固定
+
   void main(void) {
     float fragCoordZ = texture2D(depthSampler, vUV).r;
     float viewZ = (cameraNear * cameraFar) / ((cameraFar - cameraNear) * fragCoordZ - cameraFar);
     float depthNorm = clamp(abs(viewZ) / fogFar, 0.0, 1.0);
+
     float blur = abs(depthNorm - focusDepth) / focusRange;
     float amount = clamp(blur, 0.0, 1.0) * maxBlur;
+
     vec4 color = vec4(0.0);
     float total = 0.0;
     for (int dx = -1; dx <= 1; dx++) {
