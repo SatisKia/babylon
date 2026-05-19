@@ -17,13 +17,13 @@ copy package.json          build\tmp\package.web.json
 copy package-lock.json     build\tmp
 copy model\*.*             build\tmp\model
 
+set NODE_TLS_REJECT_UNAUTHORIZED=0
+
 cd build\tmp
 node ..\..\merge-package.js electron
 call npm install
-cd ..\..
-
-cd build
-set NODE_TLS_REJECT_UNAUTHORIZED=0
+@echo on
+cd ..
 call electron-packager ./tmp babylon_game --app-version=0.0.1 --electron-version=24.1.3 --platform=win32 --arch=x64 --overwrite
 @echo on
 cd ..
