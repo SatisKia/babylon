@@ -20,7 +20,7 @@ node ..\..\merge-package.js nwjs
 call npm install --production
 @echo on
 cd ..
-call nwbuild --version=0.79.1 --platform=win --arch=x64 --glob=false tmp
+call nwbuild --glob=false tmp
 @echo on
 cd ..
 

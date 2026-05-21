@@ -317,7 +317,6 @@ function syncShotModels() {
   try {
     rand = new MyRandom();
 
-    if (typeof textureSrc === "undefined" || textureSrc.length < 3) throw new Error("texture.js");
     jetSpriteManager = new SpriteManager("jet", textureSrc[0], 4000, { width: 128, height: 128 }, scene);
     bakuSpriteManager = new SpriteManager("baku", textureSrc[1], 500, { width: 128, height: 128 }, scene);
     enemyShotSpriteManager = new SpriteManager("eshot", textureSrc[2], 500, { width: 128, height: 128 }, scene);

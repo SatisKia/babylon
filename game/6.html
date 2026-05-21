@@ -102,7 +102,6 @@ function addJetParticle(jet) {
 
 (async () => {
   try {
-    if (typeof textureSrc === "undefined" || !textureSrc[0]) throw new Error("texture.js");
     jetSpriteManager = new SpriteManager("jet", textureSrc[0], 4000, { width: 128, height: 128 }, scene);
 
     groundModel = await loadObjMtl(scene, MODEL_DIR, "ground");

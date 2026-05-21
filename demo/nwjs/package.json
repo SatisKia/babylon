@@ -5,6 +5,8 @@
   "nwbuild": {
     "mode": "build",
     "glob": false,
+    "logLevel": "info",
+    "srcDir": "tmp",
     "version": "0.79.1",
     "platform": "win",
     "arch": "x64",
