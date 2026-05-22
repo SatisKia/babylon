@@ -1,14 +1,15 @@
 md build
 md build\tmp
 md build\tmp\model
+copy icon.ico              build\tmp
 copy 15.html               build\tmp
 copy common.js             build\tmp
 copy loadObjMtl.js         build\tmp
 copy texture_witch.js      build\tmp
 copy texture_mesh.js       build\tmp
 copy electron\index.js     build\tmp
-copy electron\package.json build\tmp\package.base.json
-copy package.json          build\tmp\package.web.json
+copy electron\package.json build\tmp\package.electron.json
+copy package.json          build\tmp\package.babylon.json
 copy package-lock.json     build\tmp
 copy model\*.*             build\tmp\model
 
@@ -19,7 +20,7 @@ node ..\..\merge-package.js electron
 call npm install
 @echo on
 cd ..
-call electron-packager ./tmp babylon_demo --app-version=0.0.1 --electron-version=24.1.3 --platform=win32 --arch=x64 --overwrite
+call electron-packager ./tmp babylon_demo --app-version=0.0.1 --electron-version=24.1.3 --platform=win32 --arch=x64 --icon=./tmp/icon.ico --overwrite
 @echo on
 cd ..
 

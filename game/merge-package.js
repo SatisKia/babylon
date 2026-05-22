@@ -1,9 +1,9 @@
-// Merge package.base.json + package.web.json -> package.json (cwd = build/tmp)
+// Merge package.base.json + package.babylon.json -> package.json (cwd = build/tmp)
 const fs = require("fs");
 const mode = process.argv[2] || "electron";
 
-const base = JSON.parse(fs.readFileSync("package.base.json", "utf8"));
-const web = JSON.parse(fs.readFileSync("package.web.json", "utf8"));
+const base = JSON.parse(fs.readFileSync("package." + mode + ".json", "utf8"));
+const babylon = JSON.parse(fs.readFileSync("package.babylon.json", "utf8"));
 
 if (mode === "nwjs") {
   const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
@@ -14,5 +14,5 @@ if (mode === "nwjs") {
   }
 }
 
-base.dependencies = { ...(base.dependencies || {}), ...(web.dependencies || {}) };
+base.dependencies = { ...(base.dependencies || {}), ...(babylon.dependencies || {}) };
 fs.writeFileSync("package.json", JSON.stringify(base, null, 2) + "\n");

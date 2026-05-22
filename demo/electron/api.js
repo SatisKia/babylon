@@ -1,0 +1,1 @@
+window.desktopAppAPI = window.electronAPI;

@@ -1,15 +1,17 @@
 md build
 md build\tmp
 md build\tmp\model
+copy icon.ico          build\tmp
+copy icon.png          build\tmp
 copy 15.html           build\tmp
 copy common.js         build\tmp
 copy loadObjMtl.js     build\tmp
 copy texture_witch.js  build\tmp
 copy texture_mesh.js   build\tmp
-copy nwjs\index.js     build\tmp
-copy nwjs\package.json build\tmp\package.base.json
+copy nwjs\api.js       build\tmp
 copy nwjs\app.json     build\tmp\app.json
-copy package.json      build\tmp\package.web.json
+copy nwjs\package.json build\tmp\package.nwjs.json
+copy package.json      build\tmp\package.babylon.json
 copy package-lock.json build\tmp
 copy model\*.*         build\tmp\model
 

@@ -13,6 +13,9 @@ const createWindow = () => {
     maximizable: false,
     closable: true,
     frame: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js')
+    },
   });
 
   // メニューバーを消す
