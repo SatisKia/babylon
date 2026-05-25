@@ -21,6 +21,8 @@ import { MaterialPluginBase } from "@babylonjs/core/Materials/materialPluginBase
 import { applyDiffuse, applyDiffuseMapsFromUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+const useDataUrlMesh = false;
+
 const MODEL_DIR = "./model/";
 
 const AMBIENT_LIGHT_COEF = 1.0;

@@ -16,6 +16,8 @@
 import { Color3, Color4, Engine, Matrix, Scene, Sprite, SpriteManager, Texture, Tools, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+const useDataUrl = false;
+
 const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
 
 const useStereoTrans = false;
@@ -55,7 +57,7 @@ scene.activeCameras = [camL, camR];
 
 const mgr = new SpriteManager(
   "sprites",
-  img_src,
+  useDataUrl ? img_src : "texture/sample2.png",
   200,
   { width: 256, height: 256 },
   scene,

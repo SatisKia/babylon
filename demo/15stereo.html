@@ -20,6 +20,8 @@ import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Mes
 import { applyDiffuse, applyDiffuseMapsFromUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+const useDataUrlMesh = false;
+
 const MODEL_DIR = "./model/";
 
 const useStereoTrans = false;

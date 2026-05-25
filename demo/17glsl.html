@@ -16,6 +16,8 @@
 import { Color3, Color4, Effect, Engine, Material, Mesh, MeshBuilder, PostProcess, Scene, StandardMaterial, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+const useDataUrl = false;
+
 const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
 
 let focusDepth = 0.2;
@@ -101,7 +103,7 @@ dofPost.onApply = (effect) => {
   effect.setTexture("depthSampler", depthRenderer.getDepthMap());
 };
 
-const planeTex = new Texture(img_src, scene, false, false, Texture.NEAREST_SAMPLINGMODE);
+const planeTex = new Texture(useDataUrl ? img_src : "texture/sample2.png", scene, false, false, Texture.NEAREST_SAMPLINGMODE);
 planeTex.hasAlpha = true;
 planeTex.wrapU = Texture.CLAMP_ADDRESSMODE;
 planeTex.wrapV = Texture.CLAMP_ADDRESSMODE;
