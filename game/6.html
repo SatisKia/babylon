@@ -20,6 +20,8 @@ import { applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loa
 import { _DIV, _MOD, GROUND_SIZE, Jiki, JikiJet, WAIT_1 } from "./gameCommon.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+const useDataUrl = true;
+
 const MODEL_DIR = "./model/";
 
 const FRAME_INTERVAL_MS = 1000 / WAIT_1;
@@ -102,7 +104,7 @@ function addJetParticle(jet) {
 
 (async () => {
   try {
-    jetSpriteManager = new SpriteManager("jet", textureSrc[0], 4000, { width: 128, height: 128 }, scene);
+    jetSpriteManager = new SpriteManager("jet", useDataUrl ? textureSrc[0] : "texture/jet.png", 4000, { width: 128, height: 128 }, scene);
 
     groundModel = await loadObjMtl(scene, MODEL_DIR, "ground");
     convertMaterialsToLambert(groundModel);

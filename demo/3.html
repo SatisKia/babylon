@@ -16,6 +16,8 @@
 import { Color3, Color4, Engine, Material, Matrix, Mesh, PBRMaterial, Quaternion, Scene, Texture, Tools, UniversalCamera, Vector3, VertexData } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+const useDataUrl = true;
+
 const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
 
 const canvas3d = document.getElementById("hoge_canvas");
@@ -58,7 +60,7 @@ if (useRightHandedSystem) mesh.flipFaces(false/*法線は反転させない*/); 
 // 非ライティングのテクスチャはPBRのunlit + albedoが安定（Standardのemissive/opacity組み合わせで真っ白になることがある）
 const noMipmapOrOptions = true; // Threeのtexture.generateMipmaps=falseに合わせて、noMipmapOrOptionsはtrue（ミップマップOFF）
 const invertY = false; // Threeのtexture.flipY = falseに合わせて、invertYはfalse
-const texture = new Texture(img_src, scene, noMipmapOrOptions, invertY, Texture.TRILINEAR_SAMPLINGMODE);
+const texture = new Texture(useDataUrl ? img_src : "texture/sample1.png", scene, noMipmapOrOptions, invertY, Texture.TRILINEAR_SAMPLINGMODE);
 texture.wrapU = Texture.CLAMP_ADDRESSMODE;
 texture.wrapV = Texture.CLAMP_ADDRESSMODE;
 

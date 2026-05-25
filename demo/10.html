@@ -16,6 +16,8 @@
 import { Color4, Engine, Scene, Sprite, SpriteManager, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+const useDataUrl = true;
+
 const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
 
 const canvas3d = document.getElementById("hoge_canvas");
@@ -36,7 +38,7 @@ camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
 const mgr = new SpriteManager(
   "sprites",
-  img_src,
+  useDataUrl ? img_src : "texture/sample2.png",
   200,
   { width: 256, height: 256 },
   scene,

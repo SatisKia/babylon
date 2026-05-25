@@ -43,7 +43,7 @@ export function convertMaterialsToLambert(root) {
     if (!material) continue;
     oldMaterials.add(material);
     const any = material;
-    // MTL名を維持しておくと、convertのあとにapplyDiffuseMapsFromDataUrlsを実行してもmaterialNameで引くことができる
+    // MTL名を維持しておくと、convertのあとにapplyDiffuseMapsFromUrlsを実行してもmaterialNameで引くことができる
     const raw = any.name != null ? String(any.name).trim() : "";
     const stdName = raw || `${mesh.name}_lambert`;
     const std = new StandardMaterial(stdName, mesh.getScene());
@@ -68,19 +68,19 @@ export function convertMaterialsToLambert(root) {
   }
 }
 
-// MTLマテリアル名に対応する拡散テクスチャをdata URLで差し替える（convertMaterialsToLambertの前後どちらでも可。後ならconvert側で名前を維持すること）
-export function applyDiffuseMapsFromDataUrls(scene, root, materialDataUrlByName) {
-  const dataUrlMap = {};
-  for (const entry of materialDataUrlByName) {
-    dataUrlMap[entry.materialName] = entry.dataUrl;
+// MTLマテリアル名に対応する拡散テクスチャを差し替える（convertMaterialsToLambertの前後どちらでも可。後ならconvert側で名前を維持すること）
+export function applyDiffuseMapsFromUrls(scene, root, materialUrlByName) {
+  const urlMap = {};
+  for (const entry of materialUrlByName) {
+    urlMap[entry.materialName] = entry.url;
   }
-  if (!dataUrlMap) return;
+  if (!urlMap) return;
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
   for (const mesh of meshes) {
     const material = mesh.material;
     if (!material || !material.name) continue;
-    const url = dataUrlMap[material.name];
+    const url = urlMap[material.name];
     if (url == null || typeof url !== "string") continue;
     const old = material.diffuseTexture || material.albedoTexture;
     if (old) old.dispose();

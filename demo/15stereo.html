@@ -17,7 +17,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, MirrorTexture, PBRMaterial, Plane, Quaternion, Scene, ShadowGenerator, Texture, Tools, TransformNode, UniversalCamera, Vector3, VertexBuffer, VertexData, Viewport } from "@babylonjs/core";
-import { applyDiffuse, applyDiffuseMapsFromDataUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { applyDiffuse, applyDiffuseMapsFromUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const MODEL_DIR = "./model/";
@@ -250,15 +250,15 @@ function updateStereoRig() {
       const root = await loadObjMtl(scene, MODEL_DIR, s.name);
       convertMaterialsToLambert(root);
       if (s.name === "witch") {
-        applyDiffuseMapsFromDataUrls(scene, root, [
-          { materialName: "kao", dataUrl: img_src[0] },
-          { materialName: "body", dataUrl: img_src[1] },
-          { materialName: "fire", dataUrl: img_src[2] },
+        applyDiffuseMapsFromUrls(scene, root, [
+          { materialName: "kao", url: img_src[0] },
+          { materialName: "body", url: img_src[1] },
+          { materialName: "fire", url: img_src[2] },
         ]);
       }
       if (s.name === "mesh") {
-        applyDiffuseMapsFromDataUrls(scene, root, [
-          { materialName: "mat1", dataUrl: img_src_mesh },
+        applyDiffuseMapsFromUrls(scene, root, [
+          { materialName: "mat1", url: useDataUrlMesh ? img_src_mesh : "texture/mesh.png" },
         ]);
       }
       if (s.diffuse !== undefined) applyDiffuse(root, new Color3(s.diffuse, s.diffuse, s.diffuse));

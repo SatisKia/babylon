@@ -16,6 +16,8 @@
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Quaternion, Scene, StandardMaterial, Texture, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
+const useDataUrl = true;
+
 const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
 
 const AMBIENT_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
@@ -51,7 +53,7 @@ const mesh = MeshBuilder.CreateBox("box", { size: 2, flat: useGouraud }, scene);
 
 // ThreeのMeshPhongMaterialに寄せた設定（diffuseColorのブレンド、specularColorとspecularPowerでハイライト）
 const material = new StandardMaterial("phongLike", scene);
-material.diffuseTexture = new Texture(img_src, scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + 線形（invertY false：Three flipY=true と同系の見え方）
+material.diffuseTexture = new Texture(useDataUrl ? img_src : "texture/sample1.png", scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + 線形（invertY false：Three flipY=true と同系の見え方）
 material.diffuseColor = Color3.Lerp(diffuse, Color3.White(), 1.0 - DIFFUSE_BLEND);
 material.specularColor = new Color3(0.7 * SPECULAR_COLOR_COEF, 0.7 * SPECULAR_COLOR_COEF, 0.7 * SPECULAR_COLOR_COEF);
 material.specularPower = 50.0;
