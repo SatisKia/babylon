@@ -7,10 +7,10 @@
 <script type="importmap">
 {
   "imports": {
-    "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/index.js",
-    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/",
-    "@babylonjs/loaders": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/index.js",
-    "@babylonjs/loaders/": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/"
+    "@babylonjs/core": "./node_modules/@babylonjs/core/index.js",
+    "@babylonjs/core/": "./node_modules/@babylonjs/core/",
+    "@babylonjs/loaders": "./node_modules/@babylonjs/loaders/index.js",
+    "@babylonjs/loaders/": "./node_modules/@babylonjs/loaders/"
   }
 }
 </script>
@@ -114,14 +114,14 @@ hemi.diffuse = Color3.White();
 hemi.groundColor = Color3.White();
 hemi.intensity = 0.5 * AMBIENT_LIGHT_COEF;
 
-const dir = new DirectionalLight("dir", new Vector3(0.0, -1.0, 0.0), scene);
-dir.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
-dir.shadowMinZ = 0.5;
-dir.shadowMaxZ = 40.0;
+const light = new DirectionalLight("dir", new Vector3(0.0, -1.0, 0.0), scene);
+light.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
+light.shadowMinZ = 0.5;
+light.shadowMaxZ = 40.0;
 const shadowExtent = 12.0 * (GROUND_PLANE_SIZE / 20.0);
-dir.shadowFrustumSize = Math.max(shadowExtent, 8);
+light.shadowFrustumSize = Math.max(shadowExtent, 8);
 
-const shadowGen = new ShadowGenerator(2048, dir);
+const shadowGen = new ShadowGenerator(2048, light);
 shadowGen.filter = ShadowGenerator.FILTER_PCF;
 shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH; // 5×5 PCF
 shadowGen.bias = 0.0008;
@@ -190,12 +190,12 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
   scenePivot.computeWorldMatrix(true);
   lightHelper.computeWorldMatrix(true);
   const transLight = lightHelper.getAbsolutePosition();
-  dir.position.copyFrom(transLight);
+  light.position.copyFrom(transLight);
   const tgt = new Vector3(0.0, lookY, 0.0);
   const toT = tgt.subtract(transLight);
   if (toT.lengthSquared() > 1e-10) {
     toT.normalize();
-    dir.direction.copyFrom(toT);
+    light.direction.copyFrom(toT);
   }
 
   mirrorMesh.computeWorldMatrix(true);

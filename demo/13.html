@@ -7,17 +7,21 @@
 <script type="importmap">
 {
   "imports": {
-    "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/index.js",
-    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/",
-    "@babylonjs/loaders": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/index.js",
-    "@babylonjs/loaders/": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/"
+    "@babylonjs/core": "./node_modules/@babylonjs/core/index.js",
+    "@babylonjs/core/": "./node_modules/@babylonjs/core/",
+    "@babylonjs/loaders": "./node_modules/@babylonjs/loaders/index.js",
+    "@babylonjs/loaders/": "./node_modules/@babylonjs/loaders/"
   }
 }
 </script>
 <script type="module">
-import { Camera, Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, ShadowGenerator, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Camera, Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, PointLight, Quaternion, Scene, ShadowGenerator, SpotLight, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyDiffuse, applyDiffuseMapsFromUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
+
+const useDirectionalLight = true;
+const usePointLight = false;
+const useSpotLight = false;
 
 const useWireframe = false;
 const WIREFRAME_GRAY = 0.5;
@@ -25,7 +29,16 @@ const WIREFRAME_GRAY = 0.5;
 const MODEL_DIR = "./model/";
 
 const AMBIENT_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
+// DirectionalLight
 const DIRECTIONAL_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
+// PointLight
+const POINT_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
+const POINT_LIGHT_RANGE = 40.0;
+// SpotLight
+const SPOT_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
+const SPOT_LIGHT_RANGE = 40.0;
+const SPOT_LIGHT_ANGLE = Math.PI / 6.0; // 半開角30deg→FOV約60deg
+const SPOT_LIGHT_EXPONENT = 2.0;
 
 let image_loaded = false;
 
@@ -70,16 +83,36 @@ hemi.diffuse = Color3.White();
 hemi.groundColor = Color3.White();
 hemi.intensity = 0.5 * AMBIENT_LIGHT_COEF;
 
-const dir = new DirectionalLight("dir", new Vector3(0.0, -1.0, 0.0), scene);
-dir.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
-dir.shadowMinZ = 0.5;
-dir.shadowMaxZ = 40.0;
-dir.shadowFrustumSize = 20;
+const light;
+if (useDirectionalLight) {
+  light = new DirectionalLight("dir", new Vector3(0.0, -1.0, 0.0), scene);
+  light.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
+  light.shadowMinZ = 0.5;
+  light.shadowMaxZ = 40.0;
+  light.shadowFrustumSize = 20;
+}
+if (usePointLight) {
+  light = new PointLight("point", new Vector3(lightX, lightY - lookY, lightZ), scene);
+  light.intensity = 1.0 * POINT_LIGHT_COEF;
+  light.range = POINT_LIGHT_RANGE;
+  light.shadowMinZ = 0.5;
+  light.shadowMaxZ = POINT_LIGHT_RANGE;
+}
+if (useSpotLight) {
+  // 初期方向は適当（後で毎フレームtarget方向に合わせる）
+  const initialDirection = new Vector3(0.0, -1.0, 0.0);
+  light = new SpotLight("spot", new Vector3(lightX, lightY - lookY, lightZ), initialDirection, SPOT_LIGHT_ANGLE, SPOT_LIGHT_EXPONENT, scene);
+  light.intensity = 1.0 * SPOT_LIGHT_COEF;
+  light.range = SPOT_LIGHT_RANGE;
+  light.shadowMinZ = 0.5;
+  light.shadowMaxZ = SPOT_LIGHT_RANGE;
+}
 
 // Three.jsのPCFSoftShadowMapに相当（FILTER_NONEだとシャドウ境界がテクセル状／ノイズっぽくなりやすい）
-const shadowGen = new ShadowGenerator(2048, dir);
+const shadowGen = new ShadowGenerator(2048, light);
+// Percentage-Closer Filtering（パーセンテージ・クローザー・フィルタリング）を使用。シャドウマップで「そのピクセルは影の中か」を判定するとき、1点だけではなく周辺の深度を複数サンプルし、影に入っている割合（パーセンテージ）で明暗を決める手法。
 shadowGen.filter = ShadowGenerator.FILTER_PCF;
-shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH; // 5×5 PCF
+shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH; // QUALITY_LOW＝1×1、QUALITY_MEDIUM＝3×3、QUALITY_HIGH＝5×5
 shadowGen.bias = 0.0008;
 
 (async () => {
@@ -161,12 +194,14 @@ runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), ()
   scenePivot.computeWorldMatrix(true);
   lightHelper.computeWorldMatrix(true);
   const transLight = lightHelper.getAbsolutePosition();
-  dir.position.copyFrom(transLight);
-  const tgt = new Vector3(0.0, lookY, 0.0);
-  const toT = tgt.subtract(transLight);
-  if (toT.lengthSquared() > 1e-10) {
-    toT.normalize();
-    dir.direction.copyFrom(toT);
+  light.position.copyFrom(transLight);
+  if (useDirectionalLight || useSpotLight) {
+    const tgt = new Vector3(0.0, lookY, 0.0);
+    const toT = tgt.subtract(transLight);
+    if (toT.lengthSquared() > 1e-10) {
+      toT.normalize();
+      light.direction.copyFrom(toT);
+    }
   }
   camera.setTarget(new Vector3(0.0, lookY, 0.0));
 

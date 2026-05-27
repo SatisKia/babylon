@@ -7,10 +7,10 @@
 <script type="importmap">
 {
   "imports": {
-    "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/index.js",
-    "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.48.3/",
-    "@babylonjs/loaders": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/index.js",
-    "@babylonjs/loaders/": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.48.3/"
+    "@babylonjs/core": "./node_modules/@babylonjs/core/index.js",
+    "@babylonjs/core/": "./node_modules/@babylonjs/core/",
+    "@babylonjs/loaders": "./node_modules/@babylonjs/loaders/index.js",
+    "@babylonjs/loaders/": "./node_modules/@babylonjs/loaders/"
   }
 }
 </script>
@@ -50,12 +50,12 @@ if (useLight) {
   hemi.groundColor = Color3.White();
   hemi.intensity = 0.5 * AMBIENT_LIGHT_COEF;
 
-  // Threeでのdir.position.set(0.85, 0.8, 0.75) - BabylonのDirectionalLightは光線の進行方向 = -position（右手系時はnegate）
+  // Threeでのlight.position.set(0.85, 0.8, 0.75) - BabylonのDirectionalLightは光線の進行方向 = -position（右手系時はnegate）
   const dirVec = useRightHandedSystem
     ? new Vector3(0.85, 0.8, 0.75).negate().normalize()
     : new Vector3(0.85, -0.8, -0.75).normalize();
-  const dir = new DirectionalLight("d", dirVec, scene);
-  dir.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
+  const light = new DirectionalLight("d", dirVec, scene);
+  light.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
 }
 
 let rotateX = 0.0;
