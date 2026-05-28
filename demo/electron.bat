@@ -10,7 +10,7 @@ copy texture_witch.js      build\tmp
 copy texture_mesh.js       build\tmp
 copy electron\index.js     build\tmp
 copy electron\package.json build\tmp\package.electron.json
-copy package.json          build\tmp\package.babylon.json
+copy package.json          build\tmp\package.web.json
 copy package-lock.json     build\tmp
 copy model\*.*             build\tmp\model
 copy texture\mesh.png      build\tmp\texture

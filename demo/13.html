@@ -99,7 +99,7 @@ if (usePointLight) {
   light.shadowMaxZ = POINT_LIGHT_RANGE;
 }
 if (useSpotLight) {
-  // 初期方向は適当（後で毎フレームtarget方向に合わせる）
+  // 初期方向は仮（後で毎フレームtarget方向に合わせる）
   const initialDirection = new Vector3(0.0, -1.0, 0.0);
   light = new SpotLight("spot", new Vector3(lightX, lightY - lookY, lightZ), initialDirection, SPOT_LIGHT_ANGLE, SPOT_LIGHT_EXPONENT, scene);
   light.intensity = 1.0 * SPOT_LIGHT_COEF;

@@ -81,11 +81,11 @@ hemi.diffuse = Color3.White();
 hemi.groundColor = Color3.White();
 hemi.intensity = 1.0 * AMBIENT_LIGHT_COEF;
 
-const dirVec = useRightHandedSystem
+const lightVec = useRightHandedSystem
   ? new Vector3(-1.0, -1.0, -1.0).normalize()
   : new Vector3(-1.0, 1.0, 1.0).normalize();
-const dir = new DirectionalLight("dir", dirVec, scene);
-dir.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
+const light = new DirectionalLight("dir", lightVec, scene);
+light.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
 
 function applyMaterial() {
   const data = MATERIAL_DATA[materialIndex];
@@ -102,7 +102,7 @@ applyMaterial();
 function setLight() {
   const lp = new Vector3(lightPosX, lightPosY, lightPosZ);
   if (lp.lengthSquared() < 1e-12) return;
-  dir.direction = lp.scale(-1.0).normalize();
+  light.direction = lp.scale(-1.0).normalize();
 }
 setLight();
 

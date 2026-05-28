@@ -5,8 +5,8 @@
   "window": {
     "width": 640,
     "height": 480,
-    "icon": "icon.png",
-    "resizable": false
+    "resizable": false,
+    "icon": "icon.png"
   },
   "chromium-args": "--disable-devtools",
   "nwbuild": {
