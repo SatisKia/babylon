@@ -5,8 +5,8 @@ const base = JSON.parse(fs.readFileSync("package." + mode + ".json", "utf8"));
 const web = JSON.parse(fs.readFileSync("package.web.json", "utf8"));
 
 if (mode === "nwjs") {
-  // app.jsonを取り込む
-  const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+  // package.app.jsonを取り込む
+  const app = JSON.parse(fs.readFileSync("package.app.json", "utf8"));
   Object.assign(base, app);
   const appHasIcon = app.window && typeof app.window === "object" && "icon" in app.window;
   if (!appHasIcon && base.window && typeof base.window === "object" && "icon" in base.window) {
