@@ -15,7 +15,7 @@
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Quaternion, Scene, StandardMaterial, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
-const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+const FRAME_PER_SECOND = 30/*フレーム*/;
 
 const AMBIENT_LIGHT_COEF = 0.33; // d2js版と見た目が同じになるように係数をかける
 const DIRECTIONAL_LIGHT_COEF = 1.66; // d2js版と見た目が同じになるように係数をかける
@@ -110,7 +110,7 @@ const keys = new Set();
 window.addEventListener("keydown", (e) => keys.add(e.code));
 window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   if (keys.has("ArrowUp")) lightPosY += 0.1;
   if (keys.has("ArrowDown")) lightPosY -= 0.1;
   if (keys.has("ArrowLeft")) lightPosX -= useRightHandedSystem ? 0.1 : -0.1;

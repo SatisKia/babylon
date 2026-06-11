@@ -18,7 +18,7 @@ import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
-const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+const FRAME_PER_SECOND = 30/*フレーム*/;
 
 const canvas3d = document.getElementById("hoge_canvas");
 const canvas2d = document.getElementById("fuga_canvas");
@@ -62,7 +62,7 @@ for (const [x, y, z] of pos) {
   if (useRightHandedSystem) s.invertU = true; // useRightHandedSystem時、スプライトのテクスチャUが左右反転するのを補正
 }
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   scene.render();
 
   // 2Dグラフィック画面の描画

@@ -18,7 +18,7 @@ import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene, Univ
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const WAIT_1 = 60/*フレーム*/;
-const FRAME_INTERVAL_MS = 1000 / WAIT_1;
+const FRAME_PER_SECOND = WAIT_1;
 
 const AMBIENT_LIGHT_COEF = 2.5; // d2js版と見た目が同じになるように係数をかける
 const DIRECTIONAL_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
@@ -52,7 +52,7 @@ const lightVec = useRightHandedSystem
 const light = new DirectionalLight("dir", lightVec, scene);
 light.intensity = 0.5 * DIRECTIONAL_LIGHT_COEF * BABYLON_LIGHT_SCALE;
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   const camera_vx = 0.0;
   const camera_vy = 0.0;
   const camera_vz = 10.0;

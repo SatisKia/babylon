@@ -18,7 +18,7 @@ import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
-const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+const FRAME_PER_SECOND = 30/*フレーム*/;
 
 const canvas3d = document.getElementById("hoge_canvas");
 const canvas2d = document.getElementById("fuga_canvas");
@@ -66,7 +66,7 @@ for (let z = -10.0; z <= 10.0; z += 2.0) {
 
 let angle = 0.0;
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   angle += useRightHandedSystem ? 0.01 : -0.01;
   const rotX = camera_x * Math.cos(angle) - camera_z * Math.sin(angle);
   const rotZ = camera_z * Math.cos(angle) + camera_x * Math.sin(angle);

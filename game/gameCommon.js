@@ -33,11 +33,11 @@ export const ENEMY_TYPE_02 = 1;
 
 export const ENEMY01_SPEED = 1.0;
 export const ENEMY01_ESCAPE = 50.0;
-export const ENEMY01_OUT = 150.0;
+export const ENEMY01_OUT = 200.0;
 
 export const ENEMY02_SPEED = 1.5;
 export const ENEMY02_ESCAPE = 50.0;
-export const ENEMY02_OUT = 150.0;
+export const ENEMY02_OUT = 200.0;
 
 export const ENEMY_SHOT_SPEED = 0.5;
 export const ENEMY_SHOT_RADIUS = 0.35 * 1.5;

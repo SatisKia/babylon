@@ -15,7 +15,7 @@
 import { Color3, Color4, Engine, Matrix, MeshBuilder, Quaternion, Scene, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
-const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+const FRAME_PER_SECOND = 30/*フレーム*/;
 
 const canvas3d = document.getElementById("hoge_canvas");
 const canvas2d = document.getElementById("fuga_canvas");
@@ -64,7 +64,7 @@ for (const [a, b] of linePairs) {
   line.rotationQuaternion = Quaternion.FromRotationMatrix(lineRotMat);
 }
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   scene.render();
 
   // 2Dグラフィック画面の描画

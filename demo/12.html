@@ -89,7 +89,7 @@ let scenePivot = null; // 回転用。init成功で非null（image_loadedと同�
   }
 })();
 
-runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), () => {
+runRenderLoop(engine, () => (image_loaded ? 30/*フレーム*/ : 10/*フレーム*/), () => {
   // 回転はimageのロード完了後に反映
   if (image_loaded) {
     const rotX = Matrix.RotationX(Tools.ToRadians(rotateX));

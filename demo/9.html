@@ -15,7 +15,7 @@
 import { Color3, Color4, Engine, MeshBuilder, PointLight, Scene, StandardMaterial, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
-const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+const FRAME_PER_SECOND = 30/*フレーム*/;
 
 const AMBIENT_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
 const POINT_LIGHT_COEF = 0.3; // d2js版と見た目が同じになるように係数をかける
@@ -98,7 +98,7 @@ const keys = new Set();
 window.addEventListener("keydown", (e) => keys.add(e.code));
 window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   if (keys.has("ArrowUp")) pointLightPosY += 1.0;
   if (keys.has("ArrowDown")) pointLightPosY -= 1.0;
   if (keys.has("ArrowLeft")) pointLightPosX -= 1.0;

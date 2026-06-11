@@ -15,7 +15,7 @@
 import { Color3, Color4, Engine, Matrix, Mesh, Quaternion, Scene, StandardMaterial, Tools, UniversalCamera, Vector3, VertexBuffer, VertexData } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
-const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+const FRAME_PER_SECOND = 30/*フレーム*/;
 
 const canvas3d = document.getElementById("hoge_canvas");
 const canvas2d = document.getElementById("fuga_canvas");
@@ -74,7 +74,7 @@ const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
 const rotZ = Matrix.RotationZ(Tools.ToRadians(15.0));
 mesh.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   scene.render();
 
   // 2Dグラフィック画面の描画

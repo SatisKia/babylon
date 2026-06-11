@@ -13,12 +13,12 @@
 }
 </script>
 <script type="module">
-import { Color4, Engine, Matrix, Scene, Sprite, SpriteManager, Texture, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
+import { Color4, Engine, Matrix, Scene, Sprite, SpriteManager, Texture, Tools, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
 import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
-const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+const FRAME_PER_SECOND = 30/*フレーム*/;
 
 // Vector3.Project用
 const _tmpWorld = new Vector3();
@@ -85,7 +85,7 @@ window.addEventListener("keydown", (e) => {
 });
 window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   hide2DFlag = keys.has("ShiftLeft") || keys.has("ShiftRight");
 
   angle += useRightHandedSystem ? 0.01 : -0.01;
@@ -147,19 +147,40 @@ runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
     screenshotFlag = false;
     const w = canvas3d.width;
     const h = canvas3d.height;
-    const composite = document.createElement("canvas");
-    composite.width = w;
-    composite.height = h;
-    const cctx = composite.getContext("2d");
-    cctx.drawImage(canvas3d, 0, 0);
-    if (!hide2DFlag) {
-      cctx.drawImage(canvas2d, 0, 0, canvas2d.width, canvas2d.height, 0, 0, w, h);
+    if (hide2DFlag) {
+      Tools.CreateScreenshot(
+        engine,
+        camera,
+        { width: w, height: h },
+        null,
+        "image/png",
+        true // 直接保存
+      );
+    } else {
+      Tools.CreateScreenshot(
+        engine,
+        camera,
+        { width: w, height: h },
+        (dataUrl) => {
+          // 3Dと2Dを合成して保存
+          const composite = document.createElement("canvas");
+          composite.width = w;
+          composite.height = h;
+          const cctx = composite.getContext("2d");
+          const img = new Image();
+          img.onload = () => {
+            cctx.drawImage(img, 0, 0, w, h);
+            cctx.drawImage(canvas2d, 0, 0, canvas2d.width, canvas2d.height, 0, 0, w, h);
+            const a = document.createElement("a");
+            a.href = composite.toDataURL("image/png");
+            a.download = "screenshot.png";
+            a.click();
+          };
+          img.src = dataUrl;
+        },
+        "image/png"
+      );
     }
-    const dataUrl = composite.toDataURL("image/png");
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = "screenshot.png";
-    a.click();
   }
 });
 </script>

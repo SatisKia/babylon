@@ -18,7 +18,7 @@ import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
-const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+const FRAME_PER_SECOND = 30/*フレーム*/;
 
 let focusDepth = 0.33;
 let focusRange = 0.8;
@@ -87,7 +87,7 @@ const keys = new Set();
 window.addEventListener("keydown", (e) => keys.add(e.code));
 window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   if (keys.has("ArrowUp")) focusDepth += 0.01;
   if (keys.has("ArrowDown")) focusDepth -= 0.01;
   if (keys.has("ArrowLeft")) focusRange -= 0.01;

@@ -18,7 +18,7 @@ import { runRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
-const FRAME_INTERVAL_MS = 1000 / 30/*フレーム*/;
+const FRAME_PER_SECOND = 30/*フレーム*/;
 
 const canvas3d = document.getElementById("hoge_canvas");
 const canvas2d = document.getElementById("fuga_canvas");
@@ -62,12 +62,8 @@ const rotZ = Matrix.RotationZ(Tools.ToRadians(15.0));
 mesh.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
 
 let scroll = 0.0;
-let old_time = performance.now();
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, (now) => {
-  const time = now - old_time;
-  old_time = now;
-
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   scroll -= 0.01;
   texture.uOffset = scroll;
   texture.vOffset = -scroll;
@@ -79,7 +75,7 @@ runRenderLoop(engine, FRAME_INTERVAL_MS, (now) => {
   context.clearRect(0, 0, canvas2d.width, canvas2d.height);
   context.font = "24px 'MS Gothic', sans-serif";
   context.fillStyle = "rgb(255, 0, 255)";
-  context.fillText("fps " + (time > 0.0 ? (1000.0 / time).toFixed(1) : "0"), 0, 24);
+  context.fillText("fps " + engine.getFps().toFixed(1), 0, 24);
 });
 </script>
 </head>

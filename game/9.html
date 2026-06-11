@@ -40,7 +40,7 @@ const drawHitFlag = false;
 
 const MODEL_DIR = "./model/";
 
-const FRAME_INTERVAL_MS = 1000 / WAIT_1;
+const FRAME_PER_SECOND = WAIT_1;
 
 const AMBIENT_LIGHT_COEF = 2.5; // d2js版と見た目が同じになるように係数をかける
 const DIRECTIONAL_LIGHT_COEF = 5.0; // d2js版と見た目が同じになるように係数をかける
@@ -364,7 +364,7 @@ function syncShotModels() {
   }
 })();
 
-runRenderLoop(engine, FRAME_INTERVAL_MS, () => {
+runRenderLoop(engine, FRAME_PER_SECOND, () => {
   elapse++;
 
   jiki.update(

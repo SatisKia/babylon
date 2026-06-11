@@ -83,7 +83,7 @@ hemi.diffuse = Color3.White();
 hemi.groundColor = Color3.White();
 hemi.intensity = 0.5 * AMBIENT_LIGHT_COEF;
 
-const light;
+let light;
 if (useDirectionalLight) {
   light = new DirectionalLight("dir", new Vector3(0.0, -1.0, 0.0), scene);
   light.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
