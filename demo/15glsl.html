@@ -19,7 +19,7 @@
 import { Color3, Color4, DirectionalLight, Effect, Engine, HemisphericLight, Matrix, MeshBuilder, MirrorTexture, PBRMaterial, Plane, Quaternion, Scene, ShaderMaterial, ShadowGenerator, Texture, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { MaterialPluginBase } from "@babylonjs/core/Materials/materialPluginBase.js";
 import { applyDiffuse, applyDiffuseMapsFromUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrlMesh = false;
 
@@ -463,7 +463,7 @@ window.addEventListener("keyup", (e) => keys.delete(e.code));
 
 let elapse = 0;
 
-runRenderLoop(engine, () => (image_loaded ? 30/*フレーム*/ : 10/*フレーム*/), () => {
+myRunRenderLoop(engine, () => (image_loaded ? 30/*フレーム*/ : 10/*フレーム*/), () => {
   if (keys.has("ArrowUp")) lightY += LIGHT_STEP;
   if (keys.has("ArrowDown")) lightY -= LIGHT_STEP;
   if (keys.has("ArrowLeft")) lightX -= useRightHandedSystem ? LIGHT_STEP : -LIGHT_STEP;

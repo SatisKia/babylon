@@ -14,7 +14,7 @@
 </script>
 <script type="module">
 import { Color4, Engine, Matrix, Scene, Sprite, SpriteManager, Texture, Tools, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
@@ -85,7 +85,7 @@ window.addEventListener("keydown", (e) => {
 });
 window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   hide2DFlag = keys.has("ShiftLeft") || keys.has("ShiftRight");
 
   angle += useRightHandedSystem ? 0.01 : -0.01;

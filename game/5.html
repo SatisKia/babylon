@@ -17,7 +17,7 @@
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { GROUND_SIZE, Jiki, WAIT_1 } from "./gameCommon.js";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const MODEL_DIR = "./model/";
 
@@ -107,7 +107,7 @@ function setGroundTiles() {
   }
 })();
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   jiki.update(
     !!keys.ArrowUp,
     !!keys.ArrowDown,

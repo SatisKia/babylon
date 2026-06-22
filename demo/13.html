@@ -17,7 +17,7 @@
 <script type="module">
 import { Camera, Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, PointLight, Quaternion, Scene, ShadowGenerator, SpotLight, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyDiffuse, applyDiffuseMapsFromUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDirectionalLight = true;
 const usePointLight = false;
@@ -173,7 +173,7 @@ const keys = new Set();
 window.addEventListener("keydown", (e) => keys.add(e.code));
 window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-runRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), () => {
+myRunRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), () => {
   if (keys.has("ArrowUp")) lightY += LIGHT_STEP;
   if (keys.has("ArrowDown")) lightY -= LIGHT_STEP;
   if (keys.has("ArrowLeft")) lightX -= useRightHandedSystem ? LIGHT_STEP : -LIGHT_STEP;

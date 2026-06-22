@@ -14,7 +14,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, Effect, Engine, Material, Mesh, MeshBuilder, PostProcess, Scene, StandardMaterial, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
@@ -137,7 +137,7 @@ const keys = new Set();
 window.addEventListener("keydown", (e) => keys.add(e.code));
 window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   if (keys.has("ArrowUp")) focusDepth += 0.01;
   if (keys.has("ArrowDown")) focusDepth -= 0.01;
   if (keys.has("ArrowLeft")) focusRange -= 0.01;

@@ -14,7 +14,7 @@
 </script>
 <script type="module">
 import { Color4, Engine, Scene, Sprite, SpriteManager, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
@@ -62,7 +62,7 @@ for (const [x, y, z] of pos) {
   if (useRightHandedSystem) s.invertU = true; // useRightHandedSystem時、スプライトのテクスチャUが左右反転するのを補正
 }
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   scene.render();
 
   // 2Dグラフィック画面の描画

@@ -17,7 +17,7 @@
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyDiffuse, applyDiffuseMapsFromUrls, applySmoothShading, applyUnlitDiffuseTexture, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useLight = false;
 
@@ -89,7 +89,7 @@ let scenePivot = null; // 回転用。init成功で非null（image_loadedと同�
   }
 })();
 
-runRenderLoop(engine, () => (image_loaded ? 30/*フレーム*/ : 10/*フレーム*/), () => {
+myRunRenderLoop(engine, () => (image_loaded ? 30/*フレーム*/ : 10/*フレーム*/), () => {
   // 回転はimageのロード完了後に反映
   if (image_loaded) {
     const rotX = Matrix.RotationX(Tools.ToRadians(rotateX));

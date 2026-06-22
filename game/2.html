@@ -15,7 +15,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const WAIT_1 = 60/*フレーム*/;
 const FRAME_PER_SECOND = WAIT_1;
@@ -52,7 +52,7 @@ const lightVec = useRightHandedSystem
 const light = new DirectionalLight("dir", lightVec, scene);
 light.intensity = 0.5 * DIRECTIONAL_LIGHT_COEF * BABYLON_LIGHT_SCALE;
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   const camera_vx = 0.0;
   const camera_vy = 0.0;
   const camera_vz = 10.0;

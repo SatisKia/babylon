@@ -16,7 +16,7 @@
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useQuaternion = false;
 
@@ -91,7 +91,7 @@ const jikiZ = 0.0;
   }
 })();
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   const camera_vx = 0.0;
   const camera_vy = 0.0;
   const camera_vz = 10.0;

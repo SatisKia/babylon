@@ -14,7 +14,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Quaternion, Scene, StandardMaterial, Texture, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
@@ -84,7 +84,7 @@ const lightVec = useRightHandedSystem
 const light = new DirectionalLight("d", lightVec, scene);
 light.intensity = 0.5 * DIRECTIONAL_LIGHT_COEF;
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   scene.render();
 
   // 2Dグラフィック画面の描画

@@ -13,7 +13,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, Engine, Matrix, MeshBuilder, Quaternion, Scene, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
 
@@ -64,7 +64,7 @@ for (const [a, b] of linePairs) {
   line.rotationQuaternion = Quaternion.FromRotationMatrix(lineRotMat);
 }
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   scene.render();
 
   // 2Dグラフィック画面の描画

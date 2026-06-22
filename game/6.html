@@ -18,7 +18,7 @@
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene, Sprite, SpriteManager, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { _DIV, _MOD, GROUND_SIZE, Jiki, JikiJet, WAIT_1 } from "./gameCommon.js";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
@@ -122,7 +122,7 @@ function addJetParticle(jet) {
   }
 })();
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   elapse++;
 
   jiki.update(

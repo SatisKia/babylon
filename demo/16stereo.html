@@ -14,7 +14,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, Engine, Matrix, Scene, Sprite, SpriteManager, Texture, Tools, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
-import { runRenderLoop, useRightHandedSystem } from "./common.js";
+import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
 
@@ -115,7 +115,7 @@ function updateStereoRig(basePos, target) {
   }
 }
 
-runRenderLoop(engine, FRAME_PER_SECOND, () => {
+myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   angle += useRightHandedSystem ? 0.01 : -0.01;
   const rotX = camera_x * Math.cos(angle) - camera_z * Math.sin(angle);
   const rotZ = camera_z * Math.cos(angle) + camera_x * Math.sin(angle);
