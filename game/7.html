@@ -33,7 +33,7 @@ const BABYLON_LIGHT_SCALE = 0.22 * 2.0; // d2js版と見た目が同じになる
 const canvas3d = document.getElementById("hoge_canvas");
 const canvas2d = document.getElementById("fuga_canvas");
 
-const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
+const engine = new Engine(canvas3d, true);
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
 const scene = new Scene(engine);

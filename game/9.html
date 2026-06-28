@@ -103,7 +103,7 @@ function removeCasterTree(gen, root) {
   for (const m of meshListFromRoot(root)) gen.removeShadowCaster(m, false);
 }
 
-const engine = new Engine(canvas3d, true, { preserveDrawingBuffer: true });
+const engine = new Engine(canvas3d, true);
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
 const scene = new Scene(engine);
@@ -321,7 +321,7 @@ function syncShotModels() {
 
     jetSpriteManager = new SpriteManager("jet", useDataUrl ? textureSrc[0] : "texture/jet.png", 4000, { width: 128, height: 128 }, scene);
     bakuSpriteManager = new SpriteManager("baku", useDataUrl ? textureSrc[1] : "texture/baku.png", 500, { width: 128, height: 128 }, scene);
-    enemyShotSpriteManager = new SpriteManager("eshot", useDataUrl ? textureSrc[2] : "texture/shot.png", 500, { width: 128, height: 128 }, scene);
+    enemyShotSpriteManager = new SpriteManager("eshot", useDataUrl ? textureSrc[2] : "texture/shot.png", 500, { width: 64, height: 64 }, scene);
 
     groundModel = await loadObjMtl(scene, MODEL_DIR, "ground");
     convertMaterialsToLambert(groundModel);

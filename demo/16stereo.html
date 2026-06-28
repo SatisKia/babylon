@@ -99,19 +99,17 @@ function updateStereoRig(basePos, target) {
     camL.setTarget(target);
     camR.setTarget(target);
   } else {
-    camL.position.copyFrom(basePos);
-    camR.position.copyFrom(basePos);
-    const baseDir = target.clone().subtract(basePos);
-    baseDir.normalize();
+    // 注視点（target）まわりに視点を±STEREO_ANGLE_DEG回転させ、両眼に横方向の視差を持たせる。
+    // 視点を固定したまま視線だけを回すと視差が生じず、奥行きに依らず画面が一様に水平移動するだけになる。
     const up = Vector3.Up();
     const rad = Tools.ToRadians(STEREO_ANGLE_DEG);
-    const rotL = Matrix.RotationAxis(up, rad);
-    const rotR = Matrix.RotationAxis(up, -rad);
-    const dirL = Vector3.TransformNormal(baseDir, rotL);
-    const dirR = Vector3.TransformNormal(baseDir, rotR);
-    const dist = 200.0;
-    camL.setTarget(basePos.clone().add(dirL.scale(dist)));
-    camR.setTarget(basePos.clone().add(dirR.scale(dist)));
+    const offset = basePos.subtract(target); // 注視点→視点ベクトル
+    const offL = Vector3.TransformNormal(offset, Matrix.RotationAxis(up, rad));
+    const offR = Vector3.TransformNormal(offset, Matrix.RotationAxis(up, -rad));
+    camL.position.copyFrom(target.add(offL));
+    camR.position.copyFrom(target.add(offR));
+    camL.setTarget(target);
+    camR.setTarget(target);
   }
 }
 
