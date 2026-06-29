@@ -30,7 +30,7 @@ const DIFFUSE_BLEND = 0.5;
 const canvas3d = document.getElementById("hoge_canvas");
 const canvas2d = document.getElementById("fuga_canvas");
 
-const useGouraud = true;
+const useSmooth = false;
 const diffuse = new Color3(1.0, 0.0, 1.0);
 const useEmission = false;
 const emissionColor = new Color3(1.0, 0.0, 1.0);
@@ -49,7 +49,7 @@ camera.maxZ = 100.0;
 camera.fov = Math.PI / 4.0; // 45deg
 camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
-const mesh = MeshBuilder.CreateBox("box", { size: 2, flat: useGouraud }, scene);
+const mesh = MeshBuilder.CreateBox("box", { size: 2, flat: !useSmooth }, scene);
 
 // ThreeのMeshPhongMaterialに寄せた設定（diffuseColorのブレンド、specularColorとspecularPowerでハイライト）
 const material = new StandardMaterial("phongLike", scene);

@@ -76,10 +76,10 @@ function drawHit(context, wx, wy, wz, radiusWorld) {
   const rPx = radiusWorld / d;
   const px = (ndcX * 0.5 + 0.5) * canvas2d.width;
   const py = (-ndcY * 0.5 + 0.5) * canvas2d.height;
-  context.fillStyle = "rgba(255, 0, 255, 0.5)";
+  context.strokeStyle = "rgba(255, 0, 255, 0.5)";
   context.beginPath();
   context.arc(px, py, rPx, 0, Math.PI * 2.0);
-  context.fill();
+  context.stroke();
 }
 
 function meshListFromRoot(root) {

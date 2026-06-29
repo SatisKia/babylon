@@ -109,10 +109,8 @@ export function unprojectNdcToWorld(scene, ndcX, ndcY, ndcZ, outWorld) {
   const deltaNdcX = 2.0 / w; // 横1ピクセルに対応するNDC Xの増分（キャンパス全域を-1～+1とみなしたとき）
   const sx = ((ndcX + deltaNdcX + 1) / 2) * w; // NDCで+1px横にずらした点を、Unprojectが期待するスクリーンX（0～w）へ戻す式（ndcX+δはThree版のndcX1pxに相当）
   const sy = ((1 - ndcY) / 2) * h; // NDC Yをproject側のY反転と逆の対応でスクリーンY（0～h）へ変換
-  const transform = scene.getTransformMatrix(); // ビューX投影の合成行列（シェーダに渡るものと一致）
-  const inv = transform.clone(); // 元行列を汚さないようコピー
-  inv.invert(); // スクリーン座標＋深度からワールドへ戻すための逆行列
-  const u = Vector3.Unproject(new Vector3(sx, sy, ndcZ), w, h, transform, inv); // ピクスル系(sx,sy)とclip奥行ndcZからワールド座標を復元
+  const camera = scene.activeCamera; // projectWorldToNdcと同じカメラを使う
+  const u = Vector3.Unproject(new Vector3(sx, sy, ndcZ), w, h, Matrix.Identity(), camera.getViewMatrix(), camera.getProjectionMatrix()); // ピクセル系(sx,sy)とclip奥行ndcZからワールド座標を復元
   outWorld.copyFrom(u); // 結果を出力ベクタへ格納（呼び出し側で使い回し）
   return outWorld;
 }

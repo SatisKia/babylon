@@ -28,6 +28,8 @@ const DIRECTIONAL_LIGHT_COEF = 1.66; // d2js版と見た目が同じになるよ
 const canvas3d = document.getElementById("hoge_canvas");
 const canvas2d = document.getElementById("fuga_canvas");
 
+const useSmooth = true;
+
 const engine = new Engine(canvas3d, true);
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
@@ -46,7 +48,9 @@ camera.setTarget(new Vector3(0.0, 0.0, useRightHandedSystem ? -1.0 : 1.0));
     const sphere = await loadObjMtl(scene, MODEL_DIR, "sphere");
     applyDiffuse(sphere, new Color3(0.95, 0.95, 0.95)); // StandardMaterialのdiffuseColorに相当
     applyStandardSpecular(sphere, new Color3(0.5, 0.5, 0.5), 50.0); // StandardMaterialのspecularColor/specularPowerに相当
-    applySmoothShading(sphere);
+    if (useSmooth) {
+      applySmoothShading(sphere);
+    }
     sphere.scaling.setAll(0.015);
     sphere.position.set(0.0, 0.0, useRightHandedSystem ? -6.0 : 6.0);
     const rotS = useRightHandedSystem ? 1.0 : -1.0;
