@@ -46,7 +46,7 @@ sphere.position.set(0.0, 0.0, useRightHandedSystem ? -6.0 : 6.0);
 const rotS = useRightHandedSystem ? 1.0 : -1.0;
 const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
 const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
-const rotZ = Matrix.RotationZ(rotS * Tools.ToRadians(15.0));
+const rotZ = Matrix.RotationZ(Tools.ToRadians(15.0));
 sphere.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
 
 const hemi = new HemisphericLight("h", new Vector3(0.0, 1.0, 0.0), scene);

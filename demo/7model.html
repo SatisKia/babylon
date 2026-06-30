@@ -15,7 +15,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Quaternion, Scene, StandardMaterial, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { applyDiffuse, applySmoothShading, applyStandardSpecular, loadObjMtl } from "./loadObjMtl.js";
+import { applyDiffuse, applyFlatShading, applySmoothShading, applyStandardSpecular, loadObjMtl } from "./loadObjMtl.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const MODEL_DIR = "./model/";
@@ -50,13 +50,15 @@ camera.setTarget(new Vector3(0.0, 0.0, useRightHandedSystem ? -1.0 : 1.0));
     applyStandardSpecular(sphere, new Color3(0.5, 0.5, 0.5), 50.0); // StandardMaterialのspecularColor/specularPowerに相当
     if (useSmooth) {
       applySmoothShading(sphere);
+    } else {
+      applyFlatShading(sphere);
     }
     sphere.scaling.setAll(0.015);
     sphere.position.set(0.0, 0.0, useRightHandedSystem ? -6.0 : 6.0);
     const rotS = useRightHandedSystem ? 1.0 : -1.0;
     const rotX = Matrix.RotationX(rotS * Tools.ToRadians(45.0));
     const rotY = Matrix.RotationY(rotS * Tools.ToRadians(30.0));
-    const rotZ = Matrix.RotationZ(rotS * Tools.ToRadians(15.0));
+    const rotZ = Matrix.RotationZ(Tools.ToRadians(15.0));
     sphere.rotationQuaternion = Quaternion.FromRotationMatrix(rotX.multiply(rotY.multiply(rotZ))); // Rz*Ry*Rx
   } catch (e) {
     console.error(e);

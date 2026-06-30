@@ -13,7 +13,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Quaternion, Scene, StandardMaterial, Texture, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, PBRMaterial, Quaternion, Scene, Texture, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDataUrl = false;
@@ -21,11 +21,11 @@ const useDataUrl = false;
 const FRAME_PER_SECOND = 30/*フレーム*/;
 
 const AMBIENT_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
-const DIRECTIONAL_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
+const DIRECTIONAL_LIGHT_COEF = 2.0; // d2js版と見た目が同じになるように係数をかける
 const SPECULAR_COLOR_COEF = 0.2; // d2js版と見た目が同じになるように係数をかける
 
 // map * colorを白に近づけてテクスチャを残す（Three MeshPhong color.lerpと対応）
-const DIFFUSE_BLEND = 0.5;
+const DIFFUSE_BLEND = 0.75;
 
 const canvas3d = document.getElementById("hoge_canvas");
 const canvas2d = document.getElementById("fuga_canvas");
@@ -51,19 +51,27 @@ camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
 const mesh = MeshBuilder.CreateBox("box", { size: 2, flat: !useSmooth }, scene);
 
-// ThreeのMeshPhongMaterialに寄せた設定（diffuseColorのブレンド、specularColorとspecularPowerでハイライト）
-const material = new StandardMaterial("phongLike", scene);
-material.diffuseTexture = new Texture(useDataUrl ? img_src : "texture/sample1.png", scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + 線形（invertY false：Three flipY=true と同系の見え方）
-material.diffuseColor = Color3.Lerp(diffuse, Color3.White(), 1.0 - DIFFUSE_BLEND);
-material.specularColor = new Color3(0.7 * SPECULAR_COLOR_COEF, 0.7 * SPECULAR_COLOR_COEF, 0.7 * SPECULAR_COLOR_COEF);
-material.specularPower = 50.0;
+// PBR：Physically Based Rendering（物理ベースレンダリング）
+// PBRマテリアル：「Physically Based Rendering（物理ベースレンダリング）」を実現するためのマテリアル
+// PBRMaterialでThreeのMeshPhong的な見た目に寄せる
+const material = new PBRMaterial("pbr", scene);
+// StandardMaterialのdiffuseTexture/diffuseColorに相当するのはalbedoTexture/albedoColor
+material.albedoTexture = new Texture(useDataUrl ? img_src : "texture/sample1.png", scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + 線形（invertY false：Three flipY=true と同系の見え方）
+material.albedoColor = Color3.Lerp(diffuse, Color3.White(), 1.0 - DIFFUSE_BLEND);
+// 金属ではない誘電体（diffuse中心）としてセットアップ
+material.metallic = 0.0;
+material.roughness = 0.5; // specularPower=50相当のざらつき（小さいほどハイライトが鋭い）
+// スペキュラ強度をStandardMaterial版（0.7 * SPECULAR_COLOR_COEF）に近づける（誘電体F0の調整）
+material.metallicF0Factor = 0.7 * SPECULAR_COLOR_COEF;
+// 環境テクスチャを使わないので、反射ではなくライト由来のスペキュラのみになる
+material.environmentIntensity = 1.0;
 if (useEmission) {
-  // StandardMaterialはemissiveIntensity非対応のため、強度をemissiveColorに焼き込む
-  material.emissiveColor = emissionColor.scale(emissionIntensity);
-  // emissiveをテクスチャ乗算後に加算（Threeと同様に、テクスチャで変調されず一律加算される）
-  material.useEmissiveAsIllumination = true;
+  // PBRMaterialはemissiveがalbedo乗算とは独立に加算され、emissiveIntensityも有効
+  material.emissiveColor = emissionColor;
+  material.emissiveIntensity = emissionIntensity;
 } else {
   material.emissiveColor = Color3.Black();
+  material.emissiveIntensity = 0.0;
 }
 mesh.material = material;
 

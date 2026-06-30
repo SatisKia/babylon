@@ -164,6 +164,17 @@ export function applyAmbient(root, ambient) {
   }
 }
 
+// 配下メッシュを面ごとの法線でフラットシェーディング化する。
+// OBJに法線が無い場合、法線未生成だと陰影が付かず真っ白になるため、面ごとの法線を生成して面の境がはっきり見えるようにする。
+export function applyFlatShading(root) {
+  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+  for (const mesh of meshes) {
+    if (!mesh.isVerticesDataPresent(VertexBuffer.PositionKind)) continue;
+    mesh.convertToFlatShadedMesh();
+  }
+}
+
 // 位置・インデックスから頂点法線を再計算し、同一座標付近の分裂頂点で法線を平均してからNormalKindを書き戻し、面の境が滑らかに見えるようにする
 export function applySmoothShading(root) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
