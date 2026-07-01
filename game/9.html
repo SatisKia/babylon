@@ -477,7 +477,7 @@ myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
       } else {
         model.position.set(enemy.x(), enemy.y(), enemy.z());
         const qRx = Quaternion.RotationAxis(Vector3.Right(), Tools.ToRadians(enemy.r()));
-        model.rotationQuaternion = enemy._lookQuat.multiply(qRx);
+        model.rotationQuaternion = enemy.lookQuat().multiply(qRx);
       }
     }
   }

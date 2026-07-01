@@ -563,6 +563,7 @@ export class Enemy02 {
     this._step = 0;
     this._jikiRef = jikiRef;
     this._onEnemyShot = onEnemyShot;
+
     const f = new Vector3(-this._vx, 0.0, -this._vz);
     if (f.lengthSquared() < 1e-12) f.copyFromFloats(0.0, 0.0, 1.0);
     f.normalize();
@@ -635,6 +636,9 @@ export class Enemy02 {
   }
   r() {
     return this._r;
+  }
+  lookQuat() {
+    return this._lookQuat;
   }
 }
 

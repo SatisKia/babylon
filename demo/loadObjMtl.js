@@ -104,7 +104,7 @@ export function applyStandardSpecular(root, specularColor, specularPower) {
 }
 
 // 拡散テクスチャをライティングなしで表示（emissive経由でアルベド相当を出す）
-// ※アルベド（albedo）：照明計算に入る前の、面のベースとなる色（テクスチャならベースの画素色）。BabylonではalbedoColor/albedoTextureがそれに相当。PBRではBase Colorとほぼ同義。古典的マテリアルではdiffuseColor/diffuseTextureに近い。
+// アルベド（albedo）：照明計算に入る前の、面のベースとなる色（テクスチャならベースの画素色）。BabylonではalbedoColor/albedoTextureがそれに相当。PBRではBase Colorとほぼ同義。古典的マテリアルではdiffuseColor/diffuseTextureに近い。
 export function applyUnlitDiffuseTexture(root) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
