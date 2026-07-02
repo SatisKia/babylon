@@ -15,7 +15,7 @@
 }
 </script>
 <script type="module">
-import { Camera, Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, PointLight, Quaternion, Scene, ShadowGenerator, SpotLight, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Camera, Color3, Color4, DirectionalLight, DynamicTexture, Engine, HemisphericLight, Matrix, PointLight, Quaternion, Scene, ShadowGenerator, SpotLight, Texture, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyDiffuse, applyDiffuseMapsFromUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
@@ -37,8 +37,10 @@ const POINT_LIGHT_RANGE = 40.0;
 // SpotLight
 const SPOT_LIGHT_COEF = 1.0; // d2js版と見た目が同じになるように係数をかける
 const SPOT_LIGHT_RANGE = 40.0;
-const SPOT_LIGHT_ANGLE = Math.PI / 6.0; // 半開角30deg→FOV約60deg
+const SPOT_LIGHT_ANGLE = Math.PI / 6.0; // Babylon.jsでは全開角。つまり30deg=影カメラFOV30deg
 const SPOT_LIGHT_EXPONENT = 2.0;
+const SPOT_LIGHT_PENUMBRA = 0.2; // 0=境界くっきり、1=境界を最大限ぼかす（Three.jsのpenumbra相当）
+const SPOT_LIGHT_PENUMBRA_TEXTURE_SIZE = 512;
 
 let image_loaded = false;
 
@@ -85,7 +87,8 @@ hemi.intensity = 0.5 * AMBIENT_LIGHT_COEF;
 
 let light;
 if (useDirectionalLight) {
-  light = new DirectionalLight("dir", new Vector3(0.0, -1.0, 0.0), scene);
+  const initialDirection = new Vector3(0.0, -1.0, 0.0); // 初期方向は仮（後で毎フレームtarget方向に合わせる）
+  light = new DirectionalLight("dir", initialDirection, scene);
   light.intensity = 1.0 * DIRECTIONAL_LIGHT_COEF;
   light.shadowMinZ = 0.5;
   light.shadowMaxZ = 40.0;
@@ -99,13 +102,31 @@ if (usePointLight) {
   light.shadowMaxZ = POINT_LIGHT_RANGE;
 }
 if (useSpotLight) {
-  // 初期方向は仮（後で毎フレームtarget方向に合わせる）
-  const initialDirection = new Vector3(0.0, -1.0, 0.0);
+  const initialDirection = new Vector3(0.0, -1.0, 0.0); // 初期方向は仮（後で毎フレームtarget方向に合わせる）
   light = new SpotLight("spot", new Vector3(lightX, lightY - lookY, lightZ), initialDirection, SPOT_LIGHT_ANGLE, SPOT_LIGHT_EXPONENT, scene);
   light.intensity = 1.0 * SPOT_LIGHT_COEF;
   light.range = SPOT_LIGHT_RANGE;
   light.shadowMinZ = 0.5;
   light.shadowMaxZ = SPOT_LIGHT_RANGE;
+  // StandardMaterialのSpotLightはcone境界が硬いため、投影テクスチャでpenumbra相当の減衰を付ける
+  if (SPOT_LIGHT_PENUMBRA > 0.0) {
+    const size = SPOT_LIGHT_PENUMBRA_TEXTURE_SIZE;
+    const texture = new DynamicTexture("spotPenumbra", size, scene, false);
+    const ctx = texture.getContext();
+    const center = size * 0.5;
+    const radius = center - 1.0;
+    const gradient = ctx.createRadialGradient(center, center, 0.0, center, center, radius);
+    const innerStop = Math.max(0.0, Math.min(1.0, 1.0 - SPOT_LIGHT_PENUMBRA));
+    gradient.addColorStop(0.0, "white");
+    gradient.addColorStop(innerStop, "white");
+    gradient.addColorStop(1.0, "black");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0.0, 0.0, size, size);
+    texture.update();
+    texture.wrapU = Texture.CLAMP_ADDRESSMODE;
+    texture.wrapV = Texture.CLAMP_ADDRESSMODE;
+    light.projectionTexture = texture;
+  }
 }
 
 // Three.jsのPCFSoftShadowMapに相当（FILTER_NONEだとシャドウ境界がテクセル状／ノイズっぽくなりやすい）
