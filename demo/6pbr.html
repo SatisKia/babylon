@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture_sample1.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -15,8 +14,6 @@
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, PBRMaterial, Quaternion, Scene, Texture, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
-
-const useDataUrl = false;
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
 
@@ -56,7 +53,7 @@ const mesh = MeshBuilder.CreateBox("box", { size: 2, flat: !useSmooth }, scene);
 // PBRMaterialでThreeのMeshPhong的な見た目に寄せる
 const material = new PBRMaterial("pbr", scene);
 // StandardMaterialのdiffuseTexture/diffuseColorに相当するのはalbedoTexture/albedoColor
-material.albedoTexture = new Texture(useDataUrl ? img_src : "texture/sample1.png", scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + 線形（invertY false：Three flipY=true と同系の見え方）
+material.albedoTexture = new Texture("texture/sample1.png", scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + 線形（invertY false：Three flipY=true と同系の見え方）
 material.albedoColor = Color3.Lerp(diffuse, Color3.White(), 1.0 - DIFFUSE_BLEND);
 // 金属ではない誘電体（diffuse中心）としてセットアップ
 material.metallic = 0.0;

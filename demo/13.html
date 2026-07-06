@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture_witch.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -149,9 +148,9 @@ shadowGen.bias = 0.0008;
       convertMaterialsToLambert(root);
       if (s.name === "witch") {
         applyDiffuseMapsFromUrls(scene, root, [
-          { materialName: "kao", url: img_src[0] },
-          { materialName: "body", url: img_src[1] },
-          { materialName: "fire", url: img_src[2] },
+          { materialName: "kao", url: "texture/kao.jpg" },
+          { materialName: "body", url: "texture/body.jpg" },
+          { materialName: "fire", url: "texture/fire.jpg" },
         ]);
       }
       if (s.diffuse !== undefined) applyDiffuse(root, new Color3(s.diffuse, s.diffuse, s.diffuse));

@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture_sample2.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -15,8 +14,6 @@
 <script type="module">
 import { Color3, Color4, Engine, Scene, Sprite, SpriteManager, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
-
-const useDataUrl = false;
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
 
@@ -46,7 +43,7 @@ camera.setTarget(new Vector3(0.0, 0.0, 0.0));
 
 const mgr = new SpriteManager(
   "sprites",
-  useDataUrl ? img_src : "texture/sample2.png", // 第2引数はURL文字列（Textureインスタンスではない）
+  "texture/sample2.png", // 第2引数はURL文字列（Textureインスタンスではない）
   200,
   { width: 256, height: 256 },
   scene,

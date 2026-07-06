@@ -4,7 +4,6 @@
 <meta charset="utf-8" />
 <title></title>
 <script src="api.js"></script>
-<script src="texture.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -35,7 +34,6 @@ function detectRuntime() {
   return "browser";
 }
 
-const useDataUrl = false;
 const drawHitFlag = false;
 
 const MODEL_DIR = "./model/";
@@ -319,9 +317,9 @@ function syncShotModels() {
   try {
     rand = new MyRandom();
 
-    jetSpriteManager = new SpriteManager("jet", useDataUrl ? textureSrc[0] : "texture/jet.png", 4000, { width: 128, height: 128 }, scene);
-    bakuSpriteManager = new SpriteManager("baku", useDataUrl ? textureSrc[1] : "texture/baku.png", 500, { width: 128, height: 128 }, scene);
-    enemyShotSpriteManager = new SpriteManager("eshot", useDataUrl ? textureSrc[2] : "texture/shot.png", 500, { width: 64, height: 64 }, scene);
+    jetSpriteManager = new SpriteManager("jet", "texture/jet.png", 4000, { width: 128, height: 128 }, scene);
+    bakuSpriteManager = new SpriteManager("baku", "texture/baku.png", 500, { width: 128, height: 128 }, scene);
+    enemyShotSpriteManager = new SpriteManager("eshot", "texture/shot.png", 500, { width: 64, height: 64 }, scene);
 
     groundModel = await loadObjMtl(scene, MODEL_DIR, "ground");
     convertMaterialsToLambert(groundModel);

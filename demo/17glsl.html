@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture_sample2.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -15,8 +14,6 @@
 <script type="module">
 import { Color3, Color4, Effect, Engine, Material, Mesh, MeshBuilder, PostProcess, Scene, StandardMaterial, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
-
-const useDataUrl = false;
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
 
@@ -103,7 +100,7 @@ dofPost.onApply = (effect) => {
   effect.setTexture("depthSampler", depthRenderer.getDepthMap());
 };
 
-const planeTex = new Texture(useDataUrl ? img_src : "texture/sample2.png", scene, false, false, Texture.NEAREST_SAMPLINGMODE);
+const planeTex = new Texture("texture/sample2.png", scene, false, false, Texture.NEAREST_SAMPLINGMODE);
 planeTex.hasAlpha = true;
 planeTex.wrapU = Texture.CLAMP_ADDRESSMODE;
 planeTex.wrapV = Texture.CLAMP_ADDRESSMODE;

@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture_sample1.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -15,8 +14,6 @@
 <script type="module">
 import { Color3, Color4, Engine, Material, Matrix, Mesh, PBRMaterial, Quaternion, Scene, Texture, Tools, UniversalCamera, Vector3, VertexData } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
-
-const useDataUrl = false;
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
 
@@ -60,7 +57,7 @@ if (useRightHandedSystem) mesh.flipFaces(false/*法線は反転させない*/); 
 // 非ライティングのテクスチャはPBRのunlit + albedoが安定（Standardのemissive/opacity組み合わせで真っ白になることがある）
 const noMipmapOrOptions = true; // Threeのtexture.generateMipmaps=falseに合わせて、noMipmapOrOptionsはtrue（ミップマップOFF）
 const invertY = false; // Threeのtexture.flipY = falseに合わせて、invertYはfalse
-const texture = new Texture(useDataUrl ? img_src : "texture/sample1.png", scene, noMipmapOrOptions, invertY, Texture.TRILINEAR_SAMPLINGMODE);
+const texture = new Texture("texture/sample1.png", scene, noMipmapOrOptions, invertY, Texture.TRILINEAR_SAMPLINGMODE);
 texture.wrapU = Texture.CLAMP_ADDRESSMODE;
 texture.wrapV = Texture.CLAMP_ADDRESSMODE;
 

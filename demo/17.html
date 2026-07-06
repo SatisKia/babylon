@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture_sample2.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -15,8 +14,6 @@
 <script type="module">
 import { Color3, Color4, DefaultRenderingPipeline, DepthOfFieldEffectBlurLevel, Engine, Material, Mesh, MeshBuilder, Scene, StandardMaterial, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
-
-const useDataUrl = false;
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
 
@@ -52,7 +49,7 @@ pipeline.depthOfFieldBlurLevel = DepthOfFieldEffectBlurLevel.High;
 // DepthRendererはcustomRenderFunctionでメッシュのみを深度描画し、
 // renderingGroup.renderがスプライト描画に到達しない（renderSprites=trueでも無効）。
 // そのためDOF用深度にスプライトは含まれず、ビルボード平面メッシュに置き換える。
-const planeTex = new Texture(useDataUrl ? img_src : "texture/sample2.png", scene, false, false, Texture.TRILINEAR_SAMPLINGMODE); // PNGのαを使う（赤枠＋グレー球のみ見せる）。不透明だと矩形全面のRGBが出てしまう
+const planeTex = new Texture("texture/sample2.png", scene, false, false, Texture.TRILINEAR_SAMPLINGMODE); // PNGのαを使う（赤枠＋グレー球のみ見せる）。不透明だと矩形全面のRGBが出てしまう
 planeTex.hasAlpha = true;
 planeTex.wrapU = Texture.CLAMP_ADDRESSMODE;
 planeTex.wrapV = Texture.CLAMP_ADDRESSMODE;

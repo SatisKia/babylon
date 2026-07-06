@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture_sample1.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -15,8 +14,6 @@
 <script type="module">
 import { Color3, Color4, Engine, Material, Matrix, MeshBuilder, PBRMaterial, Quaternion, Scene, Texture, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
-
-const useDataUrl = false;
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
 
@@ -39,7 +36,7 @@ camera.setTarget(new Vector3(0.0, 0.0, useRightHandedSystem ? -1.0 : 1.0));
 const mesh = MeshBuilder.CreatePlane("plane", { width: 2, height: 2 }, scene);
 if (useRightHandedSystem) mesh.flipFaces(false/*法線は反転させない*/); // 右手系＋Threeと同じ捲き順だと裏面扱いになるので反転（インデックスの入れ替えのみ）
 
-const texture = new Texture(useDataUrl ? img_src : "texture/sample1.png", scene, true, true, Texture.TRILINEAR_SAMPLINGMODE);
+const texture = new Texture("texture/sample1.png", scene, true, true, Texture.TRILINEAR_SAMPLINGMODE);
 texture.wrapU = Texture.WRAP_ADDRESSMODE;
 texture.wrapV = Texture.WRAP_ADDRESSMODE;
 texture.anisotropicFilteringLevel = 1;

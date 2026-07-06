@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture_sample1.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -15,8 +14,6 @@
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Mesh, Quaternion, Scene, StandardMaterial, Texture, Tools, UniversalCamera, Vector3, VertexData } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
-
-const useDataUrl = false;
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
 
@@ -94,7 +91,7 @@ if (useRightHandedSystem) mesh.flipFaces(false/*法線は反転させない*/); 
 
 // 鏡面を実質オフにして、拡散＋テクスチャ中心にしているので、ThreeのMeshLambertMaterialに近い「マット寄り」の見え方を狙う
 const material = new StandardMaterial("lambertLike", scene);
-material.diffuseTexture = new Texture(useDataUrl ? img_src : "texture/sample1.png", scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + バイリニア（ThreeのgenerateMipmaps=false + LinearFilterに寄せる）
+material.diffuseTexture = new Texture("texture/sample1.png", scene, true, false, Texture.BILINEAR_SAMPLINGMODE); // ミップOFF + バイリニア（ThreeのgenerateMipmaps=false + LinearFilterに寄せる）
 material.specularColor = Color3.Black();
 material.specularPower = 1;
 mesh.material = material;

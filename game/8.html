@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -20,7 +19,6 @@ import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambe
 import { _DIV, _MOD, Baku, checkHit, ENEMY01_SPEED, ENEMY02_SPEED, ENEMY_SHOT_RADIUS, ENEMY_SHOT_SPEED, ENEMY_TYPE_01, ENEMY_TYPE_02, ENEMY_Y_MIN, Enemy01, Enemy02, EnemyShot, GROUND_SIZE, Jiki, JikiJet, JikiShots, JIKI_SPEED, modelBoundingRadius, MyRandom, projectWorldToNdc, quaternionJikiPose, rxRyDegFromForward, unprojectNdcToWorld, WAIT_1 } from "./gameCommon.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
-const useDataUrl = false;
 const drawHitFlag = false;
 
 const MODEL_DIR = "./model/";
@@ -260,9 +258,9 @@ function syncShotModels() {
   try {
     rand = new MyRandom();
 
-    jetSpriteManager = new SpriteManager("jet", useDataUrl ? textureSrc[0] : "texture/jet.png", 4000, { width: 128, height: 128 }, scene);
-    bakuSpriteManager = new SpriteManager("baku", useDataUrl ? textureSrc[1] : "texture/baku.png", 500, { width: 128, height: 128 }, scene);
-    enemyShotSpriteManager = new SpriteManager("eshot", useDataUrl ? textureSrc[2] : "texture/shot.png", 500, { width: 64, height: 64 }, scene);
+    jetSpriteManager = new SpriteManager("jet", "texture/jet.png", 4000, { width: 128, height: 128 }, scene);
+    bakuSpriteManager = new SpriteManager("baku", "texture/baku.png", 500, { width: 128, height: 128 }, scene);
+    enemyShotSpriteManager = new SpriteManager("eshot", "texture/shot.png", 500, { width: 64, height: 64 }, scene);
 
     groundModel = await loadObjMtl(scene, MODEL_DIR, "ground");
     convertMaterialsToLambert(groundModel);

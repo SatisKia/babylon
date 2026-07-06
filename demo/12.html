@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8" />
 <title></title>
-<script src="texture_witch.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -69,9 +68,9 @@ let scenePivot = null; // 回転用。init成功で非null（image_loadedと同�
     const root = await loadObjMtl(scene, MODEL_DIR, "witch");
     convertMaterialsToLambert(root); // Babylon.jsにはThreeのMeshBasicMaterial相当のマテリアルクラスはない
     applyDiffuseMapsFromUrls(scene, root, [
-      { materialName: "kao", url: img_src[0] },
-      { materialName: "body", url: img_src[1] },
-      { materialName: "fire", url: img_src[2] },
+      { materialName: "kao", url: "texture/kao.jpg" },
+      { materialName: "body", url: "texture/body.jpg" },
+      { materialName: "fire", url: "texture/fire.jpg" },
     ]);
     if (useLight) {
       applyDiffuse(root, new Color3(0.8, 0.8, 0.8));

@@ -12,7 +12,6 @@ copy 9_frag.js             build\tmp
 copy common.js             build\tmp
 copy gameCommon.js         build\tmp
 copy loadObjMtl.js         build\tmp
-copy texture.js            build\tmp
 copy electron\index.js     build\tmp
 copy electron\package.json build\tmp\package.electron.json
 copy package.json          build\tmp\package.web.json
