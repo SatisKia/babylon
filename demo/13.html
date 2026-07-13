@@ -25,11 +25,11 @@ const useSpotLight = false;
 const useWireframe = false;
 const useWireframeMaterial = false; // true: material.wireframe（線幅1px固定） / false: GreasedLine（線幅可変）
 const WIREFRAME_GRAY = 0.5; // useWireframeMaterial=true時の単色
-const useDistance = false; // useWireframeがtrueかつuseWireframeMaterial=falseの時のみ参照される（true=カメラ距離、false=ビュー深度）
 const useWireframeSizeAttenuation = false; // true: 画面上一定幅（material.wireframe相当） / false: ワールド単位（遠近で太さ変化）
-const WIREFRAME_LINE_WIDTH = 1.0; // useWireframeSizeAttenuation=true 時の線幅（画面上のピクセル相当）
-const WIREFRAME_LINE_WIDTH_WORLD = 0.008; // useWireframeSizeAttenuation=false 時の線幅（ワールド単位である点に注意）
+const WIREFRAME_LINE_WIDTH = 1.0; // useWireframeSizeAttenuation=true時の線幅（画面上のピクセル相当）
+const WIREFRAME_LINE_WIDTH_WORLD = 0.008; // useWireframeSizeAttenuation=false時の線幅（ワールド単位である点に注意）
 const useWireframeGradient = false; // false: GreasedLine単色 / true: カスタムGLSLでnear/farグラデーション（Three.js LineMaterial同等）
+const useDistance = false; // useWireframeGradient=trueの時のみ参照される（true=カメラ距離、false=ビュー深度）
 // d2js版と同じsRGB値（mixはこの空間で行い、Three.jsのoutputColorSpace=SRGBColorSpaceと同じ表示になるようsRGBのまま出力）
 const WIREFRAME_NEAR_SRGB = [1.0, 1.0, 1.0];
 const WIREFRAME_FAR_SRGB = [0.5, 0.5, 1.0];
@@ -38,11 +38,29 @@ const WIREFRAME_FAR = 8.5;
 const _wfWorld = new Vector3();
 const _wfToRoot = new Matrix();
 const _wfInvRoot = new Matrix();
+function meshWireframePointsInRootLocal(mesh, root) {
+  mesh.computeWorldMatrix(true);
+  root.computeWorldMatrix(true);
+  root.getWorldMatrix().invertToRef(_wfInvRoot);
+  mesh.getWorldMatrix().multiplyToRef(_wfInvRoot, _wfToRoot);
+  const edges = GreasedLineTools.MeshesToLines([mesh]);
+  const points = [];
+  for (const edge of edges) {
+    const flat = [];
+    for (const v of edge) {
+      Vector3.TransformCoordinatesToRef(v, _wfToRoot, _wfWorld);
+      flat.push(_wfWorld.x, _wfWorld.y, _wfWorld.z);
+    }
+    points.push(flat);
+  }
+  return points;
+}
 class MaterialWireframeGradientDefines extends MaterialDefines {
   constructor() {
     super();
     this.WIREFRAME_GRADIENT = false;
     this.WIREFRAME_METRIC_DISTANCE = false;
+    this.WIREFRAME_METRIC_VIEW_Z_NEGATE = false;
   }
 }
 class WireframeGradientPlugin extends MaterialPluginBase {
@@ -51,8 +69,10 @@ class WireframeGradientPlugin extends MaterialPluginBase {
     const defines = new MaterialWireframeGradientDefines();
     defines.WIREFRAME_GRADIENT = true;
     defines.WIREFRAME_METRIC_DISTANCE = byDistance;
+    defines.WIREFRAME_METRIC_VIEW_Z_NEGATE = useRightHandedSystem;
     super(material, WireframeGradientPlugin.NAME, 250, defines, true, true);
     this._byDistance = byDistance;
+    this._useRightHandedSystem = useRightHandedSystem;
   }
   getClassName() {
     return WireframeGradientPlugin.NAME;
@@ -60,6 +80,7 @@ class WireframeGradientPlugin extends MaterialPluginBase {
   prepareDefines(defines) {
     defines.WIREFRAME_GRADIENT = true;
     defines.WIREFRAME_METRIC_DISTANCE = this._byDistance;
+    defines.WIREFRAME_METRIC_VIEW_Z_NEGATE = this._useRightHandedSystem;
   }
   getUniforms() {
     return {
@@ -91,7 +112,11 @@ class WireframeGradientPlugin extends MaterialPluginBase {
             vWireMetric = distance(wfWorld, vEyePosition.xyz);
             #else
             vec4 wfMvPos = view * vec4(wfWorld, 1.0);
+            #ifdef WIREFRAME_METRIC_VIEW_Z_NEGATE
             vWireMetric = -wfMvPos.z;
+            #else
+            vWireMetric = wfMvPos.z;
+            #endif
             #endif
           }
           #endif
@@ -120,28 +145,11 @@ class WireframeGradientPlugin extends MaterialPluginBase {
 function applyWireframeGradientToGreasedLine(lines, byDistance) {
   const mat = lines.material;
   if (!mat?.pluginManager || mat.pluginManager.getPlugin(WireframeGradientPlugin.NAME)) return;
-  new WireframeGradientPlugin(mat, byDistance);
+  const wireframeGradientPlugin = new WireframeGradientPlugin(mat, byDistance);
   mat.disableLighting = true;
   mat.emissiveColor = Color3.White();
   mat.fogEnabled = false;
   mat.markAsDirty(Material.AllDirtyFlag);
-}
-function meshWireframePointsInRootLocal(mesh, root) {
-  mesh.computeWorldMatrix(true);
-  root.computeWorldMatrix(true);
-  root.getWorldMatrix().invertToRef(_wfInvRoot);
-  mesh.getWorldMatrix().multiplyToRef(_wfInvRoot, _wfToRoot);
-  const edges = GreasedLineTools.MeshesToLines([mesh]);
-  const points = [];
-  for (const edge of edges) {
-    const flat = [];
-    for (const v of edge) {
-      Vector3.TransformCoordinatesToRef(v, _wfToRoot, _wfWorld);
-      flat.push(_wfWorld.x, _wfWorld.y, _wfWorld.z);
-    }
-    points.push(flat);
-  }
-  return points;
 }
 
 const MODEL_DIR = "./model/";
