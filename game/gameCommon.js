@@ -102,12 +102,11 @@ export function projectWorldToNdc(scene, worldX, worldY, worldZ, outNdc) {
   return outNdc;
 }
 export function unprojectNdcToWorld(scene, ndcX, ndcY, ndcZ, outWorld) {
-  // Threeのndcでunprojectと同様に、「横1pxぶんオフセットした点」のワールド座標を求める（画面ピクセル半径換算や距離算出用）
+  // Threeのndcでunprojectと同様に、NDC座標をワールド座標へ変換する
   const engine = scene.getEngine(); // 同上、幅・高さ取得用
   const w = engine.getRenderWidth(); // UnprojectとprojectWorldToNdcで使う幅と同一にする
   const h = engine.getRenderHeight(); // 同上、高さ
-  const deltaNdcX = 2.0 / w; // 横1ピクセルに対応するNDC Xの増分（キャンパス全域を-1～+1とみなしたとき）
-  const sx = ((ndcX + deltaNdcX + 1) / 2) * w; // NDCで+1px横にずらした点を、Unprojectが期待するスクリーンX（0～w）へ戻す式（ndcX+δはThree版のndcX1pxに相当）
+  const sx = ((ndcX + 1) / 2) * w; // NDC XをUnprojectが期待するスクリーンX（0～w）へ変換
   const sy = ((1 - ndcY) / 2) * h; // NDC Yをproject側のY反転と逆の対応でスクリーンY（0～h）へ変換
   const camera = scene.activeCamera; // projectWorldToNdcと同じカメラを使う
   const u = Vector3.Unproject(new Vector3(sx, sy, ndcZ), w, h, Matrix.Identity(), camera.getViewMatrix(), camera.getProjectionMatrix()); // ピクセル系(sx,sy)とclip奥行ndcZからワールド座標を復元

@@ -36,6 +36,7 @@ const enemyHudProj = new Vector3();
 const hitProjNdc = new Vector3();
 const hitUnproj = new Vector3();
 
+// 投影＋横1px分のunprojectで画面上の半径を決める
 function drawHit(context, wx, wy, wz, radiusWorld) {
   if (!drawHitFlag) return;
   projectWorldToNdc(scene, wx, wy, wz, hitProjNdc);
@@ -43,17 +44,18 @@ function drawHit(context, wx, wy, wz, radiusWorld) {
   const ndcX = hitProjNdc.x;
   const ndcY = hitProjNdc.y;
   const ndcZ = hitProjNdc.z;
-  unprojectNdcToWorld(scene, ndcX, ndcY, ndcZ, hitUnproj);
+  const ndcX1px = ndcX + 2.0 / canvas3d.width;
+  unprojectNdcToWorld(scene, ndcX1px, ndcY, ndcZ, hitUnproj);
   const dx = wx - hitUnproj.x;
   const dy = wy - hitUnproj.y;
   const dz = wz - hitUnproj.z;
   const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-8;
-  const rPx = radiusWorld / d;
+  const r = radiusWorld / d;
   const px = (ndcX * 0.5 + 0.5) * canvas2d.width;
   const py = (-ndcY * 0.5 + 0.5) * canvas2d.height;
   context.strokeStyle = "rgba(255, 0, 255, 0.5)";
   context.beginPath();
-  context.arc(px, py, rPx, 0, Math.PI * 2.0);
+  context.arc(px, py, r, 0, Math.PI * 2.0);
   context.stroke();
 }
 
