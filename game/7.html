@@ -102,6 +102,35 @@ function addJetParticle(jet) {
   jetList.push({ jet, sprite });
 }
 
+function syncShotModels() {
+  if (!jikiShots || !shotModel) return;
+  while (shotModels.length < jikiShots.size()) {
+    const m = shotModel.clone(`shot${shotModels.length}`, null, false);
+    shotModels.push(m);
+  }
+  while (shotModels.length > jikiShots.size()) {
+    const m = shotModels.pop();
+    m.dispose();
+  }
+  for (let i = 0; i < jikiShots.size(); i++) {
+    const mesh = shotModels[i];
+    const s = jikiShots.get(i);
+    mesh.position.set(s.x(), s.y(), s.z());
+    const vx = s.vx();
+    const vy = s.vy();
+    const vz = s.vz();
+    const len = Math.sqrt(vx * vx + vy * vy + vz * vz);
+    if (len < 1e-10) continue;
+    const fx = vx / len;
+    const fy = vy / len;
+    const fz = vz / len;
+    const { rx, ry } = rxRyDegFromForward(fx, fy, fz);
+    // 進行方向はlookAtではなくrxRyDegFromForward → quaternionJikiPose（自機Jiki.poseと同じ合成）。
+    // rzはそのまま渡す。d2jsの弾描画はglRotate(-rz)だが、こちらは自機と同一姿勢関数のため「+rz」が定義通り。
+    mesh.rotationQuaternion = quaternionJikiPose(rx, ry, s.rz());
+  }
+}
+
 (async () => {
   try {
     jetSpriteManager = new SpriteManager("jet", "texture/jet.png", 4000, { width: 128, height: 128 }, scene);
@@ -170,34 +199,8 @@ myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
     if (keys.Space) {
       jikiShots.add(elapse, jiki.x(), jiki.y(), jiki.z(), jiki.vx(), jiki.vy(), jiki.vz(), jiki.rz());
     }
-    jikiShots.update(false);
-    if (jikiShots && shotModel) {
-      while (shotModels.length < jikiShots.size()) {
-        const tmp = shotModel.clone(`shot${shotModels.length}`, null, false);
-        shotModels.push(tmp);
-      }
-      while (shotModels.length > jikiShots.size()) {
-        const tmp = shotModels.pop();
-        tmp.dispose();
-      }
-      for (let i = 0; i < jikiShots.size(); i++) {
-        const mesh = shotModels[i];
-        const s = jikiShots.get(i);
-        mesh.position.set(s.x(), s.y(), s.z());
-        const vx = s.vx();
-        const vy = s.vy();
-        const vz = s.vz();
-        const len = Math.sqrt(vx * vx + vy * vy + vz * vz);
-        if (len < 1e-10) continue;
-        const fx = vx / len;
-        const fy = vy / len;
-        const fz = vz / len;
-        const { rx, ry } = rxRyDegFromForward(fx, fy, fz);
-        // 進行方向はlookAtではなくrxRyDegFromForward → quaternionJikiPose（自機Jiki.poseと同じ合成）。
-        // rzはそのまま渡す。d2jsの弾描画はglRotate(-rz)だが、こちらは自機と同一姿勢関数のため「+rz」が定義通り。
-        mesh.rotationQuaternion = quaternionJikiPose(rx, ry, s.rz());
-      }
-    }
+    jikiShots.update(true);
+    syncShotModels();
   }
 
   const camera_vx = -jiki.vx() * 10.0;

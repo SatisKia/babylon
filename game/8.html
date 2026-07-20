@@ -251,7 +251,6 @@ function syncShotModels() {
     const fy = vy / len;
     const fz = vz / len;
     const { rx, ry } = rxRyDegFromForward(fx, fy, fz);
-    // 7.htmlのsyncShotModelsと同じ理由で「+rz」（d2jsの「-rz」相当の見え方）
     mesh.rotationQuaternion = quaternionJikiPose(rx, ry, s.rz());
   }
 }
