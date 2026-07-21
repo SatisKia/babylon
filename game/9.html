@@ -15,10 +15,11 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, ShadowGenerator, Sprite, SpriteManager, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, ShadowGenerator, Sound, Sprite, SpriteManager, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { _DIV, _MOD, Baku, checkHit, ENEMY01_SPEED, ENEMY02_SPEED, ENEMY_SHOT_RADIUS, ENEMY_SHOT_SPEED, ENEMY_TYPE_01, ENEMY_TYPE_02, ENEMY_Y_MIN, Enemy01, Enemy02, EnemyShot, GROUND_SIZE, Jiki, JikiJet, JikiShots, JIKI_SPEED, modelBoundingRadius, MyRandom, projectWorldToNdc, quaternionJikiPose, rxRyDegFromForward, unprojectNdcToWorld, WAIT_1 } from "./gameCommon.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
+import { BabylonGamepad } from "./babylonGamepad.js";
 
 function detectRuntime() {
   // NW.js上で動作しているかの判定
@@ -35,6 +36,119 @@ function detectRuntime() {
 }
 
 const drawHitFlag = false;
+const useGamepad = false;
+const useSound = false;
+
+// ゲームパッド
+let gamepad;
+let padInfo;
+let step = 0;
+let requestIncStep = false;
+
+// BGM
+const BGM_MAIN = 0;
+let bgm = null;
+let bgmPlaying = false;
+const bgmSrc = [
+  "mp3/bgm_main.mp3",
+];
+
+// SE
+const SE_JIKI_SHOT = 0;
+const SE_BAKU = 1;
+const se = [];
+const seSrc = [
+  "mp3/se_jiki_shot.mp3",
+  "mp3/se_baku.mp3",
+];
+
+// ゲームパッド対応
+const PAD_TYPE_BUTTON = 0;
+const PAD_TYPE_AXIS_MINUS = 1;
+const PAD_TYPE_AXIS_PLUS = 2;
+function MyPadInfo() {
+  this.type = PAD_TYPE_BUTTON;
+  this.index = -1;
+}
+function canUseGamepad() {
+  return "getGamepads" in navigator;
+}
+function waitInputPad(pad, info) {
+  if (pad == null) {
+    return true;
+  }
+  for (let i = 0; i < pad.buttonNum(); i++) {
+    if (pad.isButtonPressed(i)) {
+      info.type = PAD_TYPE_BUTTON;
+      info.index = i;
+      return true;
+    }
+  }
+  for (let i = 0; i < pad.axisNum(); i++) {
+    const value = pad.axisValue(i);
+    if (value === 1.0) {
+      info.type = PAD_TYPE_AXIS_PLUS;
+      info.index = i;
+      return true;
+    }
+    if (value === -1.0) {
+      info.type = PAD_TYPE_AXIS_MINUS;
+      info.index = i;
+      return true;
+    }
+  }
+  return false;
+}
+function isInputPad(pad, info) {
+  if (pad != null) {
+    switch (info.type) {
+    case PAD_TYPE_BUTTON:
+      return pad.isButtonPressed(info.index);
+    case PAD_TYPE_AXIS_MINUS:
+      return pad.axisValue(info.index) < 0.0;
+    case PAD_TYPE_AXIS_PLUS:
+      return pad.axisValue(info.index) > 0.0;
+    }
+  }
+  return false;
+}
+function processGamepadEvent(inputType, index, value1, value2) {
+  if (inputType === BabylonGamepad.INPUT_TYPE_BUTTON && value1 === 0) {
+    if (requestIncStep) {
+      requestIncStep = false;
+      step++;
+    }
+  } else if (inputType === BabylonGamepad.INPUT_TYPE_STICK) {
+    if (requestIncStep && value1 === 0 && value2 === 0) {
+      requestIncStep = false;
+      step++;
+    }
+  }
+}
+
+// BGM再生
+function stopMusic() {
+  if (bgm != null) {
+    bgm.stop();
+  }
+}
+function playMusic(id) {
+  if (bgm != null && !bgm.isPlaying) {
+    bgm.play();
+  }
+}
+
+// SE再生
+let soundId = -1;
+function resetSound() {
+  soundId = -1;
+}
+function playSound(id) {
+  if (se[id] != null && id !== soundId) {
+    soundId = id;
+    se[id].play();
+  }
+}
 
 const MODEL_DIR = "./model/";
 
@@ -175,6 +289,9 @@ let enemyRadius02 = 1.0;
 let score = 0;
 
 function addBaku(x, y, z) {
+  if (useSound) {
+    playSound(SE_BAKU);
+  }
   const vx = rand.next(50) / 50.0;
   const vy = rand.next(50) / 50.0;
   const vz = rand.next(50) / 50.0;
@@ -310,9 +427,36 @@ function syncShotModels() {
     const fy = vy / len;
     const fz = vz / len;
     const { rx, ry } = rxRyDegFromForward(fx, fy, fz);
-    // 7.htmlのsyncShotModelsと同じ理由で「+rz」（d2jsの「-rz」相当の見え方）
     mesh.rotationQuaternion = quaternionJikiPose(rx, ry, s.rz());
   }
+}
+
+if (useGamepad) {
+  gamepad = new BabylonGamepad(scene);
+  gamepad.setTolerance(0.5, 1.0);
+  gamepad.addEventListener(processGamepadEvent);
+  padInfo = new Array(5);
+  for (let i = 0; i < 5; i++) {
+    padInfo[i] = new MyPadInfo();
+  }
+}
+
+if (useSound) {
+  bgm = new Sound("bgm_main", bgmSrc[BGM_MAIN], scene, null, {
+    loop: true,
+    autoplay: false,
+  });
+  bgm.setVolume(0.75);
+  se[SE_JIKI_SHOT] = new Sound("se_jiki_shot", seSrc[SE_JIKI_SHOT], scene, null, {
+    loop: false,
+    autoplay: false,
+  });
+  se[SE_JIKI_SHOT].setVolume(1.0);
+  se[SE_BAKU] = new Sound("se_baku", seSrc[SE_BAKU], scene, null, {
+    loop: false,
+    autoplay: false,
+  });
+  se[SE_BAKU].setVolume(1.0);
 }
 
 (async () => {
@@ -365,13 +509,54 @@ function syncShotModels() {
 })();
 
 myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
+  if (useGamepad && step < 5) {
+    scene.render();
+
+    const context = canvas2d.getContext("2d");
+    context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+if (detectRuntime() === "browser") {
+    context.strokeStyle = "rgb(0, 0, 0)";
+    context.strokeRect(0, 0, canvas2d.width - 1, canvas2d.height - 1);
+}
+
+    context.font = "24px 'MS Gothic', sans-serif";
+    context.fillStyle = "#000";
+    switch (step) {
+    case 0: context.fillText("パッド上を入力してください", 0, 24); break;
+    case 1: context.fillText("パッド下を入力してください", 0, 24); break;
+    case 2: context.fillText("パッド左を入力してください", 0, 24); break;
+    case 3: context.fillText("パッド右を入力してください", 0, 24); break;
+    case 4: context.fillText("パッドボタンを入力してください", 0, 24); break;
+    }
+    const _pad = (canUseGamepad() && gamepad.fetch(0) != null) ? gamepad : null;
+    if (_pad != null && waitInputPad(_pad, padInfo[step])) {
+      requestIncStep = true;
+    }
+
+    return;
+  }
+
+  if (useSound) {
+    // BGM再生
+    if (!bgmPlaying) {
+      playMusic(BGM_MAIN);
+      if (bgm?.isPlaying) {
+        bgmPlaying = true;
+      }
+    }
+
+    // SE
+    resetSound();
+  }
+
   elapse++;
 
+  const _gamepad = (useGamepad && canUseGamepad() && gamepad.fetch(0) != null) ? gamepad : null;
   jiki.update(
-    !!keys.ArrowUp,
-    !!keys.ArrowDown,
-    !!keys.ArrowLeft,
-    !!keys.ArrowRight,
+    !!keys.ArrowUp || (useGamepad && isInputPad(_gamepad, padInfo[0])),
+    !!keys.ArrowDown || (useGamepad && isInputPad(_gamepad, padInfo[1])),
+    !!keys.ArrowLeft || (useGamepad && isInputPad(_gamepad, padInfo[2])),
+    !!keys.ArrowRight || (useGamepad && isInputPad(_gamepad, padInfo[3])),
     useRightHandedSystem
   );
   setGroundTiles();
@@ -401,8 +586,12 @@ myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   }
 
   if (jikiShots) {
-    if (keys.Space) {
-      jikiShots.add(elapse, jiki.x(), jiki.y(), jiki.z(), jiki.vx(), jiki.vy(), jiki.vz(), jiki.rz());
+    if (keys.Space || (useGamepad && isInputPad(_gamepad, padInfo[4]))) {
+      if (jikiShots.add(elapse, jiki.x(), jiki.y(), jiki.z(), jiki.vx(), jiki.vy(), jiki.vz(), jiki.rz())) {
+        if (useSound) {
+          playSound(SE_JIKI_SHOT);
+        }
+      }
     }
     jikiShots.update(true);
     syncShotModels();
