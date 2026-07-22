@@ -215,7 +215,7 @@ Effect.ShadersStore["waterRippleReflectVertexShader"] = /*glsl*/`
 
   varying vec4 vTextureCoord; // フラグメントへ：反射サンプル用の同次座標（実装では主にxy,zを使用）
 
-  void main(void) { // 各頂点1回：世界座標経由で反射用ベクトルを渡す
+  void main(void) { // 各頂点1回：ワールド座標経由で反射用ベクトルを渡す
     vec4 worldPos = world * vec4(position, 1.0); // ワールド原点基準の点
     vTextureCoord = textureMatrix * (view * worldPos); // view空間まで持ち込んだ上で投射行列へ（エンジン仕様）
     gl_Position = worldViewProjection * vec4(position, 1.0); // 画面上のクリップ座標

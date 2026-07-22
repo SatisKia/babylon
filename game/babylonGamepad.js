@@ -101,6 +101,12 @@ export class BabylonGamepad {
   static INPUT_TYPE_BUTTON = 0;
   static INPUT_TYPE_STICK  = 1;
 
+  static BUTTON_UP   = 0;
+  static BUTTON_DOWN = 1;
+
+  static STICK_L = 0;
+  static STICK_R = 1;
+
   constructor(scene) {
     this._scene = scene;
     this._gamepad = null;
@@ -179,7 +185,7 @@ export class BabylonGamepad {
 
     if (pad.onButtonDownObservable != null) {
       var downObserver = pad.onButtonDownObservable.add(function(buttonIndex) {
-        self._notifyInputEvent(BabylonGamepad.INPUT_TYPE_BUTTON, buttonIndex, 1);
+        self._notifyInputEvent(BabylonGamepad.INPUT_TYPE_BUTTON, buttonIndex, BabylonGamepad.BUTTON_DOWN);
       });
       cleanups.push(function() {
         pad.onButtonDownObservable.remove(downObserver);
@@ -188,17 +194,69 @@ export class BabylonGamepad {
 
     if (pad.onButtonUpObservable != null) {
       var upObserver = pad.onButtonUpObservable.add(function(buttonIndex) {
-        self._notifyInputEvent(BabylonGamepad.INPUT_TYPE_BUTTON, buttonIndex, 0);
+        self._notifyInputEvent(BabylonGamepad.INPUT_TYPE_BUTTON, buttonIndex, BabylonGamepad.BUTTON_UP);
       });
       cleanups.push(function() {
         pad.onButtonUpObservable.remove(upObserver);
       });
     }
 
+    // DualShock / Xbox の方向キーは onButton* ではなく onPad* で通知される
+    if (pad.onPadDownObservable != null) {
+      var padDownObserver = pad.onPadDownObservable.add(function(buttonIndex) {
+        self._notifyInputEvent(BabylonGamepad.INPUT_TYPE_BUTTON, buttonIndex, BabylonGamepad.BUTTON_DOWN);
+      });
+      cleanups.push(function() {
+        pad.onPadDownObservable.remove(padDownObserver);
+      });
+    }
+
+    if (pad.onPadUpObservable != null) {
+      var padUpObserver = pad.onPadUpObservable.add(function(buttonIndex) {
+        self._notifyInputEvent(BabylonGamepad.INPUT_TYPE_BUTTON, buttonIndex, BabylonGamepad.BUTTON_UP);
+      });
+      cleanups.push(function() {
+        pad.onPadUpObservable.remove(padUpObserver);
+      });
+    }
+
+    // L2/R2 はアナログトリガーのため、押下/離しをボタン 6/7 のエッジとして通知する
+    function isTriggerPressed(rawValue) {
+      return normalizeValue(rawValue, self._min, self._max) >= 1.0;
+    }
+
+    if (typeof pad.onlefttriggerchanged === "function") {
+      self._leftTriggerPressed = isTriggerPressed(pad.leftTrigger);
+      pad.onlefttriggerchanged(function(value) {
+        var pressed = isTriggerPressed(value);
+        if (pressed !== self._leftTriggerPressed) {
+          self._leftTriggerPressed = pressed;
+          self._notifyInputEvent(BabylonGamepad.INPUT_TYPE_BUTTON, 6, pressed ? BabylonGamepad.BUTTON_DOWN : BabylonGamepad.BUTTON_UP);
+        }
+      });
+      cleanups.push(function() {
+        pad.onlefttriggerchanged(function() {});
+      });
+    }
+
+    if (typeof pad.onrighttriggerchanged === "function") {
+      self._rightTriggerPressed = isTriggerPressed(pad.rightTrigger);
+      pad.onrighttriggerchanged(function(value) {
+        var pressed = isTriggerPressed(value);
+        if (pressed !== self._rightTriggerPressed) {
+          self._rightTriggerPressed = pressed;
+          self._notifyInputEvent(BabylonGamepad.INPUT_TYPE_BUTTON, 7, pressed ? BabylonGamepad.BUTTON_DOWN : BabylonGamepad.BUTTON_UP);
+        }
+      });
+      cleanups.push(function() {
+        pad.onrighttriggerchanged(function() {});
+      });
+    }
+
     pad.onleftstickchanged(function(values) {
       self._notifyInputEvent(
         BabylonGamepad.INPUT_TYPE_STICK,
-        0,
+        BabylonGamepad.STICK_L,
         normalizeAxisValue(values.x, self._min, self._max),
         normalizeAxisValue(values.y, self._min, self._max)
       );
@@ -207,7 +265,7 @@ export class BabylonGamepad {
     pad.onrightstickchanged(function(values) {
       self._notifyInputEvent(
         BabylonGamepad.INPUT_TYPE_STICK,
-        1,
+        BabylonGamepad.STICK_R,
         normalizeAxisValue(values.x, self._min, self._max),
         normalizeAxisValue(values.y, self._min, self._max)
       );

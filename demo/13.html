@@ -342,7 +342,7 @@ const keys = new Set();
 window.addEventListener("keydown", (e) => keys.add(e.code));
 window.addEventListener("keyup", (e) => keys.delete(e.code));
 
-myRunRenderLoop(engine, () => (image_loaded ? 1000 / 30/*フレーム*/ : 100), () => {
+myRunRenderLoop(engine, () => (image_loaded ? 30/*フレーム*/ : 10/*フレーム*/), () => {
   if (keys.has("ArrowUp")) lightY += LIGHT_STEP;
   if (keys.has("ArrowDown")) lightY -= LIGHT_STEP;
   if (keys.has("ArrowLeft")) lightX -= useRightHandedSystem ? LIGHT_STEP : -LIGHT_STEP;

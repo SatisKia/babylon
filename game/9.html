@@ -113,13 +113,37 @@ function isInputPad(pad, info) {
   return false;
 }
 function processGamepadEvent(inputType, index, value1, value2) {
-  if (inputType === BabylonGamepad.INPUT_TYPE_BUTTON && value1 === 0) {
-    if (requestIncStep) {
+  if (!requestIncStep || step >= padInfo.length) {
+    return;
+  }
+  const info = padInfo[step];
+
+  // ボタンの場合、割り当てたボタンの離しのみ加算
+  if (inputType === BabylonGamepad.INPUT_TYPE_BUTTON && value1 === BabylonGamepad.BUTTON_UP) {
+    if (info.type === PAD_TYPE_BUTTON && info.index === index) {
       requestIncStep = false;
       step++;
     }
-  } else if (inputType === BabylonGamepad.INPUT_TYPE_STICK) {
-    if (requestIncStep && value1 === 0 && value2 === 0) {
+    return;
+  }
+
+  // スティックの場合、割り当てた軸が中立に戻ったときのみ加算
+  // （左右スティックのノイズや、同じスティックの別軸の0を「離した」と誤判定しない）
+  if (inputType === BabylonGamepad.INPUT_TYPE_STICK) {
+    if (info.type !== PAD_TYPE_AXIS_MINUS && info.type !== PAD_TYPE_AXIS_PLUS) {
+      return;
+    }
+    // info.index：0=左スティックX、1=左スティックY、2=右スティックX、3=右スティックY
+    const stickIndex = info.index < 2 ? BabylonGamepad.STICK_L : BabylonGamepad.STICK_R;
+    if (index !== stickIndex) {
+      return;
+    }
+    // info.indexが上記コメント内容なので、偶数=X、奇数=Y
+    const axisValue = (info.index % 2 === 0) ? value1 : value2;
+    const released =
+      (info.type === PAD_TYPE_AXIS_PLUS && !(axisValue > 0.0)) ||
+      (info.type === PAD_TYPE_AXIS_MINUS && !(axisValue < 0.0));
+    if (released) {
       requestIncStep = false;
       step++;
     }
@@ -219,6 +243,20 @@ function removeCasterTree(gen, root) {
 
 const engine = new Engine(canvas3d, true);
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+
+// デフォルトのスピーカー（unmute）ボタンを出さず、最初のユーザー操作でAudioContextを解放する
+if (useSound && Engine.audioEngine) {
+  Engine.audioEngine.useCustomUnlockedButton = true;
+  const unlockAudio = () => {
+    if (Engine.audioEngine && !Engine.audioEngine.unlocked) {
+      Engine.audioEngine.unlock();
+    }
+  };
+  // iOSはclickが確実。デスクトップはpointerdown/keydownでも解放できるよう登録
+  window.addEventListener("click", unlockAudio, { once: true });
+  window.addEventListener("keydown", unlockAudio, { once: true });
+  window.addEventListener("pointerdown", unlockAudio, { once: true });
+}
 
 const scene = new Scene(engine);
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
@@ -442,6 +480,10 @@ if (useGamepad) {
 }
 
 if (useSound) {
+  if (Engine.audioEngine) {
+    // Engine生成直後にaudioEngineがまだ無い／Sound作成時に再設定が必要、といった場合に備えた重複設定
+    Engine.audioEngine.useCustomUnlockedButton = true;
+  }
   bgm = new Sound("bgm_main", bgmSrc[BGM_MAIN], scene, null, {
     loop: true,
     autoplay: false,
