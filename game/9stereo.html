@@ -582,14 +582,14 @@ myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   }
 
   const width = canvas2d.width / 2;
+
   context.font = "24px 'MS Gothic', sans-serif";
   context.fillStyle = "#000";
-  context.fillText("SCORE", 0, 24);
-  context.fillText("SCORE", width, 24);
-  const str = String(score);
-  const strWidth = context.measureText(str).width;
-  context.fillText(str, width / 3.0 - strWidth, 24);
-  context.fillText(str, width + width / 3.0 - strWidth, 24);
+  for (let i = 0; i < 2; i++) {
+    context.fillText("SCORE", 0 + i * width, 24);
+    const str = String(score);
+    context.fillText(str, width / 3.0 - context.measureText(str).width + i * width, 24);
+  }
 
   context.strokeStyle = "rgb(0, 255, 255)";
   context.fillStyle = "rgb(0, 255, 255)";
