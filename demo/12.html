@@ -14,7 +14,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, PointerEventTypes, Quaternion, Scene, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyDiffuse, applyDiffuseMapsFromUrls, applySmoothShading, applyUnlitDiffuseTexture, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
@@ -111,20 +111,21 @@ myRunRenderLoop(engine, () => (image_loaded ? 30/*フレーム*/ : 10/*フレー
 let mouseDown = false;
 let mouseX = 0;
 let mouseY = 0;
-canvas3d.addEventListener("pointerdown", (e) => {
-  mouseDown = true;
-  mouseX = e.clientX;
-  mouseY = e.clientY;
-});
-window.addEventListener("pointerup", () => {
-  mouseDown = false;
-});
-window.addEventListener("pointermove", (e) => {
-  if (!mouseDown) return;
-  rotateX += (e.clientY - mouseY) / 2.0;
-  rotateY += (e.clientX - mouseX) / 2.0;
-  mouseX = e.clientX;
-  mouseY = e.clientY;
+scene.onPointerObservable.add((pointerInfo) => {
+  const e = pointerInfo.event;
+  if (pointerInfo.type === PointerEventTypes.POINTERDOWN) {
+    mouseDown = true;
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  } else if (pointerInfo.type === PointerEventTypes.POINTERUP) {
+    mouseDown = false;
+  } else if (pointerInfo.type === PointerEventTypes.POINTERMOVE) {
+    if (!mouseDown) return;
+    rotateX += (e.clientY - mouseY) / 2.0;
+    rotateY += (e.clientX - mouseX) / 2.0;
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  }
 });
 </script>
 </head>

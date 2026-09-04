@@ -12,7 +12,7 @@
 }
 </script>
 <script type="module">
-import { Color4, Engine, Matrix, Scene, Sprite, SpriteManager, Texture, Tools, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
+import { Color4, Engine, KeyboardEventTypes, Matrix, Scene, Sprite, SpriteManager, Texture, Tools, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
@@ -75,12 +75,22 @@ let angle = 0.0;
 let screenshotFlag = false;
 let hide2DFlag = false;
 
+canvas3d.tabIndex = engine.canvasTabIndex;
+canvas3d.focus({ preventScroll: true });
 const keys = new Set();
-window.addEventListener("keydown", (e) => {
-  keys.add(e.code);
-  if (e.code === "KeyS") screenshotFlag = true;
+scene.onKeyboardObservable.add((kbInfo) => {
+  const code = kbInfo.event.code;
+  if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
+    keys.add(code);
+  } else if (kbInfo.type === KeyboardEventTypes.KEYUP) {
+    keys.delete(code);
+  }
 });
-window.addEventListener("keyup", (e) => keys.delete(e.code));
+scene.onKeyboardObservable.add((kbInfo) => {
+  if (kbInfo.type === KeyboardEventTypes.KEYDOWN && kbInfo.event.code === "KeyS") {
+    screenshotFlag = true;
+  }
+});
 
 myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   hide2DFlag = keys.has("ShiftLeft") || keys.has("ShiftRight");
@@ -185,11 +195,17 @@ myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
 });
 </script>
 </head>
+<style type="text/css">
+#hoge_canvas:focus,
+#hoge_canvas:focus-visible {
+  outline: none;
+}
+</style>
 <body>
 <div align="center">
   <div style="position:relative">
     <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
-    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="640" height="480"></canvas>
   </div>
 </div>
 </body>

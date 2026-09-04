@@ -14,7 +14,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, ShadowGenerator, Sprite, SpriteManager, Tools, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, KeyboardEventTypes, Matrix, Quaternion, Scene, ShadowGenerator, Sprite, SpriteManager, Tools, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
 import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { _DIV, _MOD, Baku, checkHit, ENEMY01_SPEED, ENEMY02_SPEED, ENEMY_SHOT_RADIUS, ENEMY_SHOT_SPEED, ENEMY_TYPE_01, ENEMY_TYPE_02, ENEMY_Y_MIN, Enemy01, Enemy02, EnemyShot, GROUND_SIZE, Jiki, JikiJet, JikiShots, JIKI_SPEED, modelBoundingRadius, MyRandom, quaternionJikiPose, rxRyDegFromForward, WAIT_1 } from "./gameCommon.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
@@ -187,9 +187,17 @@ shadowGenerator.normalBias = 0.03;
 // BabylonのdarknessはThreeの体感と逆: 0=最も濃い影、1に近いほど影が消える（1で影なし）
 shadowGenerator.darkness = 0.2;
 
+canvas3d.tabIndex = engine.canvasTabIndex;
+canvas3d.focus({ preventScroll: true });
 const keys = {};
-window.addEventListener("keydown", (e) => { keys[e.code] = true; });
-window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+scene.onKeyboardObservable.add((kbInfo) => {
+  const code = kbInfo.event.code;
+  if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
+    keys[code] = true;
+  } else if (kbInfo.type === KeyboardEventTypes.KEYUP) {
+    keys[code] = false;
+  }
+});
 
 let jiki = new Jiki(1.0);
 let jikiModel = null;
@@ -629,11 +637,17 @@ myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
 });
 </script>
 </head>
+<style type="text/css">
+#hoge_canvas:focus,
+#hoge_canvas:focus-visible {
+  outline: none;
+}
+</style>
 <body>
 <div align="center">
   <div style="position:relative">
     <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:1024px; height:480px"></canvas>
-    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="1024" height="480"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="1024" height="480"></canvas>
   </div>
 </div>
 </body>

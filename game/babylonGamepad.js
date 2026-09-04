@@ -8,15 +8,13 @@ function setupGenericPad(pad) {
     return _genericPadStates.get(pad);
   }
 
-  var state = { buttons : [] };
-
+  var state = { buttons: [] };
   pad.onButtonDownObservable.add(function(buttonIndex) {
     while (state.buttons.length <= buttonIndex) {
       state.buttons.push(0.0);
     }
     state.buttons[buttonIndex] = 1.0;
   });
-
   pad.onButtonUpObservable.add(function(buttonIndex) {
     while (state.buttons.length <= buttonIndex) {
       state.buttons.push(0.0);
@@ -52,41 +50,41 @@ function normalizeAxisValue(value, min, max) {
 function getMappedButtonValue(pad, buttonIndex) {
   if (pad instanceof Xbox360Pad) {
     switch (buttonIndex) {
-      case  0: return pad.buttonA;
-      case  1: return pad.buttonB;
-      case  2: return pad.buttonX;
-      case  3: return pad.buttonY;
-      case  4: return pad.buttonLB;
-      case  5: return pad.buttonRB;
-      case  6: return pad.leftTrigger;
-      case  7: return pad.rightTrigger;
-      case  8: return pad.buttonBack;
-      case  9: return pad.buttonStart;
-      case 10: return pad.buttonLeftStick;
-      case 11: return pad.buttonRightStick;
-      case 12: return pad.dPadUp;
-      case 13: return pad.dPadDown;
-      case 14: return pad.dPadLeft;
-      case 15: return pad.dPadRight;
+    case  0: return pad.buttonA;
+    case  1: return pad.buttonB;
+    case  2: return pad.buttonX;
+    case  3: return pad.buttonY;
+    case  4: return pad.buttonLB;
+    case  5: return pad.buttonRB;
+    case  6: return pad.leftTrigger;
+    case  7: return pad.rightTrigger;
+    case  8: return pad.buttonBack;
+    case  9: return pad.buttonStart;
+    case 10: return pad.buttonLeftStick;
+    case 11: return pad.buttonRightStick;
+    case 12: return pad.dPadUp;
+    case 13: return pad.dPadDown;
+    case 14: return pad.dPadLeft;
+    case 15: return pad.dPadRight;
     }
   } else if (pad instanceof DualShockPad) {
     switch (buttonIndex) {
-      case  0: return pad.buttonCross;
-      case  1: return pad.buttonCircle;
-      case  2: return pad.buttonSquare;
-      case  3: return pad.buttonTriangle;
-      case  4: return pad.buttonL1;
-      case  5: return pad.buttonR1;
-      case  6: return pad.leftTrigger;
-      case  7: return pad.rightTrigger;
-      case  8: return pad.buttonShare;
-      case  9: return pad.buttonOptions;
-      case 10: return pad.buttonLeftStick;
-      case 11: return pad.buttonRightStick;
-      case 12: return pad.dPadUp;
-      case 13: return pad.dPadDown;
-      case 14: return pad.dPadLeft;
-      case 15: return pad.dPadRight;
+    case  0: return pad.buttonCross;
+    case  1: return pad.buttonCircle;
+    case  2: return pad.buttonSquare;
+    case  3: return pad.buttonTriangle;
+    case  4: return pad.buttonL1;
+    case  5: return pad.buttonR1;
+    case  6: return pad.leftTrigger;
+    case  7: return pad.rightTrigger;
+    case  8: return pad.buttonShare;
+    case  9: return pad.buttonOptions;
+    case 10: return pad.buttonLeftStick;
+    case 11: return pad.buttonRightStick;
+    case 12: return pad.dPadUp;
+    case 13: return pad.dPadDown;
+    case 14: return pad.dPadLeft;
+    case 15: return pad.dPadRight;
     }
   } else if (pad instanceof GenericPad) {
     var state = setupGenericPad(pad);
@@ -319,20 +317,20 @@ export class BabylonGamepad {
 
     var value = 0.0;
     switch (axisIndex) {
-      case 0:
-        value = this._gamepad.leftStick.x;
-        break;
-      case 1:
-        value = this._gamepad.leftStick.y;
-        break;
-      case 2:
-        value = this._gamepad.rightStick.x;
-        break;
-      case 3:
-        value = this._gamepad.rightStick.y;
-        break;
-      default:
-        return 0.0;
+    case 0:
+      value = this._gamepad.leftStick.x;
+      break;
+    case 1:
+      value = this._gamepad.leftStick.y;
+      break;
+    case 2:
+      value = this._gamepad.rightStick.x;
+      break;
+    case 3:
+      value = this._gamepad.rightStick.y;
+      break;
+    default:
+      return 0.0;
     }
     var minus = false;
     if (value < 0.0) {

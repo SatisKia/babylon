@@ -15,7 +15,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, Quaternion, Scene, ShadowGenerator, Sound, Sprite, SpriteManager, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, KeyboardEventTypes, Matrix, PointerEventTypes, Quaternion, Scene, ShadowGenerator, Sound, Sprite, SpriteManager, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { _DIV, _MOD, Baku, checkHit, ENEMY01_SPEED, ENEMY02_SPEED, ENEMY_SHOT_RADIUS, ENEMY_SHOT_SPEED, ENEMY_TYPE_01, ENEMY_TYPE_02, ENEMY_Y_MIN, Enemy01, Enemy02, EnemyShot, GROUND_SIZE, Jiki, JikiJet, JikiShots, JIKI_SPEED, modelBoundingRadius, MyRandom, projectWorldToNdc, quaternionJikiPose, rxRyDegFromForward, unprojectNdcToWorld, WAIT_1 } from "./gameCommon.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
@@ -244,21 +244,33 @@ function removeCasterTree(gen, root) {
 const engine = new Engine(canvas3d, true);
 engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 
-// デフォルトのスピーカー（unmute）ボタンを出さず、最初のユーザー操作でAudioContextを解放する
+// デフォルトのスピーカー（unmute）ボタンを消す
+let unlockAudio = null;
 if (useSound && Engine.audioEngine) {
   Engine.audioEngine.useCustomUnlockedButton = true;
-  const unlockAudio = () => {
+  unlockAudio = () => {
     if (Engine.audioEngine && !Engine.audioEngine.unlocked) {
       Engine.audioEngine.unlock();
     }
   };
-  // iOSはclickが確実。デスクトップはpointerdown/keydownでも解放できるよう登録
-  window.addEventListener("click", unlockAudio, { once: true });
-  window.addEventListener("keydown", unlockAudio, { once: true });
-  window.addEventListener("pointerdown", unlockAudio, { once: true });
 }
 
 const scene = new Scene(engine);
+if (unlockAudio) {
+  // 最初のユーザー操作（キーまたはポインタ）でAudioContextを解放する
+  const audioUnlockKeyboardObserver = scene.onKeyboardObservable.add((kbInfo) => {
+    if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
+      unlockAudio();
+      scene.onKeyboardObservable.remove(audioUnlockKeyboardObserver);
+    }
+  });
+  const audioUnlockPointerObserver = scene.onPointerObservable.add((pointerInfo) => {
+    if (pointerInfo.type === PointerEventTypes.POINTERDOWN) {
+      unlockAudio();
+      scene.onPointerObservable.remove(audioUnlockPointerObserver);
+    }
+  });
+}
 if (useRightHandedSystem) scene.useRightHandedSystem = true;
 scene.clearColor = new Color4(1.0, 1.0, 1.0, 1.0);
 scene.fogMode = Scene.FOGMODE_LINEAR;
@@ -296,9 +308,17 @@ shadowGenerator.normalBias = 0.03;
 // BabylonのdarknessはThreeの体感と逆: 0=最も濃い影、1に近いほど影が消える（1で影なし）
 shadowGenerator.darkness = 0.2;
 
+canvas3d.tabIndex = engine.canvasTabIndex;
+canvas3d.focus({ preventScroll: true });
 const keys = {};
-window.addEventListener("keydown", (e) => { keys[e.code] = true; });
-window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+scene.onKeyboardObservable.add((kbInfo) => {
+  const code = kbInfo.event.code;
+  if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
+    keys[code] = true;
+  } else if (kbInfo.type === KeyboardEventTypes.KEYUP) {
+    keys[code] = false;
+  }
+});
 
 let jiki = new Jiki(1.0);
 let jikiModel = null;
@@ -815,11 +835,17 @@ html, body {
 }
 </style>
 </head>
+<style type="text/css">
+#hoge_canvas:focus,
+#hoge_canvas:focus-visible {
+  outline: none;
+}
+</style>
 <body>
 <div align="center">
   <div style="position:relative">
     <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
-    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="640" height="480"></canvas>
   </div>
 </div>
 </body>

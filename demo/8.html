@@ -12,7 +12,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Matrix, MeshBuilder, Quaternion, Scene, StandardMaterial, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, KeyboardEventTypes, Matrix, MeshBuilder, PointerEventTypes, Quaternion, Scene, StandardMaterial, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
@@ -106,9 +106,17 @@ function setLight() {
 }
 setLight();
 
+canvas3d.tabIndex = engine.canvasTabIndex;
+canvas3d.focus({ preventScroll: true });
 const keys = new Set();
-window.addEventListener("keydown", (e) => keys.add(e.code));
-window.addEventListener("keyup", (e) => keys.delete(e.code));
+scene.onKeyboardObservable.add((kbInfo) => {
+  const code = kbInfo.event.code;
+  if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
+    keys.add(code);
+  } else if (kbInfo.type === KeyboardEventTypes.KEYUP) {
+    keys.delete(code);
+  }
+});
 
 myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   if (keys.has("ArrowUp")) lightPosY += 0.1;
@@ -132,23 +140,31 @@ myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   context.fillText("lightPosZ " + lightPosZ.toFixed(2), 0, 96);
 });
 
-window.addEventListener("keydown", (e) => {
-  if (e.code === "Enter") {
+scene.onKeyboardObservable.add((kbInfo) => {
+  if (kbInfo.type === KeyboardEventTypes.KEYDOWN && kbInfo.event.code === "Enter") {
     materialIndex = (materialIndex + 1) % MATERIAL_DATA.length;
     applyMaterial();
   }
 });
-window.addEventListener("click", () => {
-  materialIndex = (materialIndex + 1) % MATERIAL_DATA.length;
-  applyMaterial();
+scene.onPointerObservable.add((pointerInfo) => {
+  if (pointerInfo.type === PointerEventTypes.POINTERDOWN) {
+    materialIndex = (materialIndex + 1) % MATERIAL_DATA.length;
+    applyMaterial();
+  }
 });
 </script>
+<style type="text/css">
+#hoge_canvas:focus,
+#hoge_canvas:focus-visible {
+  outline: none;
+}
+</style>
 </head>
 <body>
 <div align="center">
   <div style="position:relative">
     <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
-    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="640" height="480"></canvas>
   </div>
 </div>
 </body>

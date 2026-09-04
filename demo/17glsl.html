@@ -12,7 +12,7 @@
 }
 </script>
 <script type="module">
-import { Color3, Color4, Effect, Engine, Material, Mesh, MeshBuilder, PostProcess, Scene, StandardMaterial, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, Effect, Engine, KeyboardEventTypes, Material, Mesh, MeshBuilder, PostProcess, Scene, StandardMaterial, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const FRAME_PER_SECOND = 30/*フレーム*/;
@@ -130,9 +130,17 @@ for (let z = -10.0; z <= 10.0; z += 2.0) {
 
 let angle = 0.0;
 
+canvas3d.tabIndex = engine.canvasTabIndex;
+canvas3d.focus({ preventScroll: true });
 const keys = new Set();
-window.addEventListener("keydown", (e) => keys.add(e.code));
-window.addEventListener("keyup", (e) => keys.delete(e.code));
+scene.onKeyboardObservable.add((kbInfo) => {
+  const code = kbInfo.event.code;
+  if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
+    keys.add(code);
+  } else if (kbInfo.type === KeyboardEventTypes.KEYUP) {
+    keys.delete(code);
+  }
+});
 
 myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
   if (keys.has("ArrowUp")) focusDepth += 0.01;
@@ -165,11 +173,17 @@ myRunRenderLoop(engine, FRAME_PER_SECOND, () => {
 });
 </script>
 </head>
+<style type="text/css">
+#hoge_canvas:focus,
+#hoge_canvas:focus-visible {
+  outline: none;
+}
+</style>
 <body>
 <div align="center">
   <div style="position:relative">
     <canvas id="hoge_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); width:640px; height:480px"></canvas>
-    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0)" width="640" height="480"></canvas>
+    <canvas id="fuga_canvas" style="position:absolute; left:50%; transform:translate(-50%, 0); pointer-events:none" width="640" height="480"></canvas>
   </div>
 </div>
 </body>
