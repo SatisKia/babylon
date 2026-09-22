@@ -194,7 +194,6 @@ myRunRenderLoop(engine, () => (image_loaded ? 30/*フレーム*/ : 10/*フレー
   }
 
   lightHelper.position.set(lightX, lightY - lookY, lightZ);
-  scenePivot.computeWorldMatrix(true);
   lightHelper.computeWorldMatrix(true);
   const transLight = lightHelper.getAbsolutePosition();
   light.position.copyFrom(transLight);

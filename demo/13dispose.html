@@ -15,12 +15,18 @@
 </script>
 <script type="module">
 import { Camera, Color3, Color4, CreateGreasedLine, DirectionalLight, DynamicTexture, Engine, GreasedLineTools, HemisphericLight, KeyboardEventTypes, Material, MaterialDefines, MaterialPluginBase, Matrix, PointLight, PointerEventTypes, Quaternion, Scene, ShadowGenerator, SpotLight, Texture, Tools, TransformNode, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { applyDiffuse, applyDiffuseMapsFromUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { applyDiffuse, applyDiffuseMapsFromUrls, applyKaBlendToDiffuse, applySmoothShading, convertMaterialsToLambert, disposeObjMtlRoot, loadObjMtl } from "./loadObjMtl.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 
 const useDirectionalLight = true;
 const usePointLight = false;
 const useSpotLight = false;
+
+const useTemplate = true;
+const CHARACTER_NAMES = ["witch", "cat", "swan"];
+const modelTemplates = { witch: null, cat: null, swan: null };
+const modelRoots = { witch: null, cat: null, swan: null };
+let dispMode = 0;
 
 const useWireframe = false;
 const useWireframeMaterial = false; // true: material.wireframe（線幅1px固定） / false: GreasedLine（線幅可変）
@@ -262,76 +268,147 @@ shadowGen.filter = ShadowGenerator.FILTER_PCF;
 shadowGen.filteringQuality = ShadowGenerator.QUALITY_HIGH; // QUALITY_LOW＝1×1、QUALITY_MEDIUM＝3×3、QUALITY_HIGH＝5×5
 shadowGen.bias = 0.0008;
 
-(async () => {
-  const specs = [
-    { name: "witch", scale: 0.015, pos: [0.0, 0.05, 0.0], diffuse: 0.8 },
-    { name: "cat", scale: 0.005, pos: [useRightHandedSystem ? -1.5 : 1.5, 0.4, 0.5] },
-    { name: "swan", scale: 0.005, pos: [useRightHandedSystem ? 2.0 : -2.0, 2.0, 0.5], kaBlend: 0.35 },
-    { name: "ground", scale: 0.1, pos: [0.0, 0.0, 0.0], ground: true },
-  ];
-  try {
-    for (const s of specs) {
-      const root = await loadObjMtl(scene, MODEL_DIR, s.name);
-      convertMaterialsToLambert(root);
-      if (s.name === "witch") {
-        applyDiffuseMapsFromUrls(scene, root, [
-          { materialName: "kao", url: "texture/kao.jpg" },
-          { materialName: "body", url: "texture/body.jpg" },
-          { materialName: "fire", url: "texture/fire.jpg" },
-        ]);
-      }
-      if (s.diffuse !== undefined) applyDiffuse(root, new Color3(s.diffuse, s.diffuse, s.diffuse));
-      if (s.kaBlend !== undefined) applyKaBlendToDiffuse(root, s.kaBlend);
-      applySmoothShading(root);
-      root.scaling.copyFromFloats(s.scale, s.scale, s.scale);
-      root.position.set(s.pos[0], s.pos[1] - lookY, s.pos[2]);
-      const castShadow = !s.ground;
-      const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-      if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+const specs = [
+  { name: "witch", scale: 0.015, pos: [0.0, 0.05, 0.0], diffuse: 0.8 },
+  { name: "cat", scale: 0.005, pos: [useRightHandedSystem ? -1.5 : 1.5, 0.4, 0.5] },
+  { name: "swan", scale: 0.005, pos: [useRightHandedSystem ? 2.0 : -2.0, 2.0, 0.5], kaBlend: 0.35 },
+  { name: "ground", scale: 0.1, pos: [0.0, 0.0, 0.0], ground: true },
+];
+
+async function prepareModelRootFromSpec(s) {
+  const root = await loadObjMtl(scene, MODEL_DIR, s.name);
+  convertMaterialsToLambert(root);
+  if (s.name === "witch") {
+    applyDiffuseMapsFromUrls(scene, root, [
+      { materialName: "kao", url: "texture/kao.jpg" },
+      { materialName: "body", url: "texture/body.jpg" },
+      { materialName: "fire", url: "texture/fire.jpg" },
+    ]);
+  }
+  if (s.diffuse !== undefined) applyDiffuse(root, new Color3(s.diffuse, s.diffuse, s.diffuse));
+  if (s.kaBlend !== undefined) applyKaBlendToDiffuse(root, s.kaBlend);
+  applySmoothShading(root);
+  root.scaling.copyFromFloats(s.scale, s.scale, s.scale);
+  return root;
+}
+
+function rotateScenePivot() {
+  const rotX = Matrix.RotationX(Tools.ToRadians(rotateX));
+  const rotY = Matrix.RotationY((useRightHandedSystem ? 1.0 : -1.0) * Tools.ToRadians(rotateY));
+  const rotZ = Matrix.RotationZ(0.0);
+  scenePivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX)));
+  scenePivot.computeWorldMatrix(true);
+}
+
+function attachModelRootToScene(root, s) {
+  root.position.set(s.pos[0], s.pos[1] - lookY, s.pos[2]);
+  const castShadow = !s.ground;
+  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+  for (const mesh of meshes) {
+    if (castShadow) shadowGen.addShadowCaster(mesh);
+    mesh.receiveShadows = true;
+  }
+
+  // シーンが回転していない状態に対してrootを登録した後、回転を戻す
+  scenePivot.rotationQuaternion = Quaternion.Identity();
+  scenePivot.computeWorldMatrix(true);
+  root.setParent(scenePivot);
+  rotateScenePivot();
+
+  // シーンへ登録した後、親pivotの回転を反映したワールド行列にそろえる
+  const parent = root.parent;
+  if (parent?.computeWorldMatrix) {
+    parent.computeWorldMatrix(true);
+  }
+  root.computeWorldMatrix(true);
+
+  if (useWireframe) {
+    const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+    if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+    if (useWireframeMaterial) {
       for (const mesh of meshes) {
-        if (castShadow) shadowGen.addShadowCaster(mesh);
-        mesh.receiveShadows = true;
+        const material = mesh.material;
+        if (!material) continue;
+        material.wireframe = true;
+        material.diffuseColor = new Color3(WIREFRAME_GRAY, WIREFRAME_GRAY, WIREFRAME_GRAY);
+        material.emissiveColor = Color3.Black();
+        if (material.diffuseTexture) material.diffuseTexture = null;
+        if (material.bumpTexture) material.bumpTexture = null;
+        if (material.ambientTexture) material.ambientTexture = null;
       }
-      root.setParent(scenePivot);
-      if (useWireframe) {
-        const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-        if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-        if (useWireframeMaterial) {
-          for (const mesh of meshes) {
-            const material = mesh.material;
-            if (!material) continue;
-            material.wireframe = true;
-            material.diffuseColor = new Color3(WIREFRAME_GRAY, WIREFRAME_GRAY, WIREFRAME_GRAY);
-            material.emissiveColor = Color3.Black();
-            if (material.diffuseTexture) material.diffuseTexture = null;
-            if (material.bumpTexture) material.bumpTexture = null;
-            if (material.ambientTexture) material.ambientTexture = null;
-          }
-        } else {
-          const allPoints = [];
-          for (const mesh of meshes) {
-            if (mesh.getClassName && mesh.getClassName().startsWith("GreasedLine")) continue;
-            allPoints.push(...meshWireframePointsInRootLocal(mesh, root));
-            mesh.isVisible = false;
-          }
-          if (allPoints.length > 0) {
-            const materialOptions = {
-              width: useWireframeSizeAttenuation ? WIREFRAME_LINE_WIDTH : WIREFRAME_LINE_WIDTH_WORLD,
-              sizeAttenuation: useWireframeSizeAttenuation,
-            };
-            materialOptions.color = new Color3(WIREFRAME_NEAR_SRGB[0], WIREFRAME_NEAR_SRGB[1], WIREFRAME_NEAR_SRGB[2]);
-            const lines = CreateGreasedLine(
-              `${s.name}_wire`,
-              { points: allPoints },
-              materialOptions,
-              scene
-            );
-            lines.parent = root;
-            if (useWireframeGradient) applyWireframeGradientToGreasedLine(lines, useDistance);
-          }
-        }
+    } else {
+      const allPoints = [];
+      for (const mesh of meshes) {
+        if (mesh.getClassName && mesh.getClassName().startsWith("GreasedLine")) continue;
+        allPoints.push(...meshWireframePointsInRootLocal(mesh, root));
+        mesh.isVisible = false;
+      }
+      if (allPoints.length > 0) {
+        const materialOptions = {
+          width: useWireframeSizeAttenuation ? WIREFRAME_LINE_WIDTH : WIREFRAME_LINE_WIDTH_WORLD,
+          sizeAttenuation: useWireframeSizeAttenuation,
+        };
+        materialOptions.color = new Color3(WIREFRAME_NEAR_SRGB[0], WIREFRAME_NEAR_SRGB[1], WIREFRAME_NEAR_SRGB[2]);
+        const lines = CreateGreasedLine(
+          `${s.name}_wire_${root.uniqueId}`,
+          { points: allPoints },
+          materialOptions,
+          scene
+        );
+        lines.parent = root;
+        if (useWireframeGradient) applyWireframeGradientToGreasedLine(lines, useDistance);
       }
     }
+  }
+  return root;
+}
+
+async function applyDispMode() {
+  let visible;
+  const m = dispMode % 4;
+  if (m === 0) visible = new Set(CHARACTER_NAMES);
+  else if (m === 1) visible = new Set(["witch"]);
+  else if (m === 2) visible = new Set(["cat"]);
+  else visible = new Set(["swan"]);
+
+  for (const name of CHARACTER_NAMES) {
+    if (!visible.has(name)) {
+      const root = modelRoots[name];
+      if (root) {
+        disposeObjMtlRoot(root, shadowGen);
+        modelRoots[name] = null;
+      }
+    }
+  }
+  for (const name of CHARACTER_NAMES) {
+    if (!visible.has(name) || modelRoots[name]) continue;
+    const spec = specs.find((s) => s.name === name);
+    if (useTemplate) {
+      const template = modelTemplates[spec.name];
+      modelRoots[name] = template.clone(`${spec.name}_instance`, null);
+      modelRoots[name].setEnabled(true);
+    } else {
+      modelRoots[name] = await prepareModelRootFromSpec(spec);
+    }
+    attachModelRootToScene(modelRoots[name], spec);
+  }
+}
+
+(async () => {
+  try {
+    const groundSpec = specs.find((s) => s.ground);
+    const groundRoot = await prepareModelRootFromSpec(groundSpec);
+    attachModelRootToScene(groundRoot, groundSpec);
+    if (useTemplate) {
+      for (const name of CHARACTER_NAMES) {
+        const spec = specs.find((s) => s.name === name);
+        const template = await prepareModelRootFromSpec(spec);
+        template.setEnabled(false);
+        modelTemplates[name] = template;
+      }
+    }
+    await applyDispMode();
     image_loaded = true;
   } catch (e) {
     console.error(e);
@@ -345,6 +422,10 @@ scene.onKeyboardObservable.add((kbInfo) => {
   const code = kbInfo.event.code;
   if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
     keys.add(code);
+    if (code === "Enter") {
+      dispMode++;
+      applyDispMode().catch(console.error);
+    }
   } else if (kbInfo.type === KeyboardEventTypes.KEYUP) {
     keys.delete(code);
   }
@@ -360,11 +441,7 @@ myRunRenderLoop(engine, () => (image_loaded ? 30/*フレーム*/ : 10/*フレー
 
   // 回転はimageのロード完了後に反映
   if (image_loaded) {
-    const rotX = Matrix.RotationX(Tools.ToRadians(rotateX));
-    const rotY = Matrix.RotationY((useRightHandedSystem ? 1.0 : -1.0) * Tools.ToRadians(rotateY));
-    const rotZ = Matrix.RotationZ(0.0);
-    scenePivot.rotationQuaternion = Quaternion.FromRotationMatrix(rotZ.multiply(rotY.multiply(rotX)));
-    scenePivot.computeWorldMatrix(true);
+    rotateScenePivot();
   }
 
   lightHelper.position.set(lightX, lightY - lookY, lightZ);

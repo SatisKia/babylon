@@ -10,9 +10,15 @@ export async function loadObjMtl(scene, basePath, modelName) {
   });
   container.addAllToScene();
   const rootTn = container.transformNodes?.find((t) => t.name === "__root__");
-  if (rootTn) return rootTn;
+  if (rootTn) {
+    rootTn.metadata = { ...rootTn.metadata, objMtlSourceUniqueId: rootTn.uniqueId };
+    return rootTn;
+  }
   const named = container.meshes.find((m) => m.name === "__root__");
-  if (named && named.getClassName?.() === "TransformNode") return named;
+  if (named && named.getClassName?.() === "TransformNode") {
+    named.metadata = { ...named.metadata, objMtlSourceUniqueId: named.uniqueId };
+    return named;
+  }
   const root = new TransformNode(`${modelName}_root`, scene);
   const list = (container.meshes || []).filter((m) => m && m.name !== "__root__");
   const meshSet = new Set(list);
@@ -30,7 +36,29 @@ export async function loadObjMtl(scene, basePath, modelName) {
     if (top) tops.push(m);
   }
   for (const m of tops) m.setParent(root);
+
+  root.metadata = { ...root.metadata, objMtlSourceUniqueId: root.uniqueId };
   return root;
+}
+
+export function disposeObjMtlRoot(root, shadowGenerator) {
+  if (!root || root.isDisposed()) return;
+
+  if (shadowGenerator) {
+    const meshes = root.getChildMeshes?.(true) ?? [];
+    if (root.getClassName?.() === "Mesh") meshes.push(root);
+    for (const m of meshes) {
+      shadowGenerator.removeShadowCaster(m, false);
+    }
+  }
+
+  // root.metadata.objMtlSourceUniqueIdとroot.uniqueIdとが異なるときcloneとみなす
+  const id = root.metadata?.objMtlSourceUniqueId;
+  if (id != null && root.uniqueId !== id) {
+    root.dispose(false, false); // 子も再帰的に。マテリアル・テクスチャは解放しない
+  } else {
+    root.dispose(false, true); // 子も再帰的に。マテリアル・テクスチャも解放
+  }
 }
 
 // 配下メッシュのマテリアルを、共有しないStandardMaterialに差し替え、テクスチャ・拡散色・環境色などを引き継ぎつつ、鏡面をほぼ無効化（黒い鏡面色・低いspecularPower）して拡散寄りの見え方にそろえる
