@@ -20,6 +20,7 @@ import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambe
 import { _DIV, _MOD, Baku, checkHit, ENEMY01_SPEED, ENEMY02_SPEED, ENEMY_SHOT_RADIUS, ENEMY_SHOT_SPEED, ENEMY_TYPE_01, ENEMY_TYPE_02, ENEMY_Y_MIN, Enemy01, Enemy02, EnemyShot, GROUND_SIZE, Jiki, JikiJet, JikiShots, JIKI_SPEED, modelBoundingRadius, MyRandom, projectWorldToNdc, quaternionJikiPose, rxRyDegFromForward, unprojectNdcToWorld, WAIT_1 } from "./gameCommon.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 import { BabylonGamepad } from "./babylonGamepad.js";
+import { createEnemyHudObjects, disposeEnemyHudObjects, updateEnemyHud } from "./enemyHud3D.js";
 
 function detectRuntime() {
   // NW.js上で動作しているかの判定
@@ -38,6 +39,7 @@ function detectRuntime() {
 const drawHitFlag = false;
 const useGamepad = false;
 const useSound = false;
+const useEnemyHud3D = true;
 
 // ゲームパッド
 let gamepad;
@@ -308,6 +310,8 @@ shadowGenerator.normalBias = 0.03;
 // BabylonのdarknessはThreeの体感と逆: 0=最も濃い影、1に近いほど影が消える（1で影なし）
 shadowGenerator.darkness = 0.2;
 
+let screenshotFlag = false;
+
 canvas3d.tabIndex = engine.canvasTabIndex;
 canvas3d.focus({ preventScroll: true });
 const keys = {};
@@ -317,6 +321,11 @@ scene.onKeyboardObservable.add((kbInfo) => {
     keys[code] = true;
   } else if (kbInfo.type === KeyboardEventTypes.KEYUP) {
     keys[code] = false;
+  }
+});
+scene.onKeyboardObservable.add((kbInfo) => {
+  if (kbInfo.type === KeyboardEventTypes.KEYDOWN && kbInfo.event.code === "KeyS") {
+    screenshotFlag = true;
   }
 });
 
@@ -401,7 +410,11 @@ function addEnemy01(flag) {
   const enemy = new Enemy01(x, y, z, vx2, vy, vz2, enemyRadius01 * 2.0, flag, jiki);
   const model = enemy01Model.clone("e01", null, false);
   addCasterTree(shadowGenerator, model);
-  enemies.push({ kind: ENEMY_TYPE_01, enemy, model });
+  if (useEnemyHud3D) {
+    enemies.push({ kind: ENEMY_TYPE_01, enemy, model, hud: createEnemyHudObjects(scene) });
+  } else {
+    enemies.push({ kind: ENEMY_TYPE_01, enemy, model });
+  }
 }
 
 function addEnemy02(flag) {
@@ -430,7 +443,11 @@ function addEnemy02(flag) {
   const enemy = new Enemy02(x, y, z, vx2, vy, vz2, enemyRadius02 * 2.0, jiki, addEnemyShot);
   const model = enemy02Model.clone("e02", null, false);
   addCasterTree(shadowGenerator, model);
-  enemies.push({ kind: ENEMY_TYPE_02, enemy, model });
+  if (useEnemyHud3D) {
+    enemies.push({ kind: ENEMY_TYPE_02, enemy, model, hud: createEnemyHudObjects(scene) });
+  } else {
+    enemies.push({ kind: ENEMY_TYPE_02, enemy, model });
+  }
 }
 
 function setGroundTiles() {
@@ -661,13 +678,17 @@ if (detectRuntime() === "browser") {
     for (let i = jikiShots.size() - 1; i >= 0; i--) {
       const s = jikiShots.get(i);
       for (let j = enemies.length - 1; j >= 0; j--) {
-        const { enemy: e, model } = enemies[j];
+        const entry = enemies[j];
+        const { enemy: e, model } = entry;
         if (
           checkHit(s.x(), s.y(), s.z(), s.radius(), e.x(), e.y(), e.z(), e.radius())
         ) {
           if (e.damage()) {
             const t = e.type();
             addBaku(e.x(), e.y(), e.z());
+            if (useEnemyHud3D) {
+              disposeEnemyHudObjects(entry.hud);
+            }
             removeCasterTree(shadowGenerator, model);
             model.dispose();
             enemies.splice(j, 1);
@@ -711,6 +732,9 @@ if (detectRuntime() === "browser") {
     const entry = enemies[i];
     const enemy = entry.enemy;
     if (!enemy.update()) {
+      if (useEnemyHud3D) {
+        disposeEnemyHudObjects(entry.hud);
+      }
       removeCasterTree(shadowGenerator, entry.model);
       entry.model.dispose();
       const t = enemy.type();
@@ -763,6 +787,11 @@ if (detectRuntime() === "browser") {
   );
   light.setDirectionToTarget(new Vector3(look_x, look_y, look_z));
 
+  if (useEnemyHud3D) {
+    for (let i = 0; i < enemies.length; i++) {
+      updateEnemyHud({ hud: enemies[i].hud, enemy: enemies[i].enemy, enemyHudProj, jiki, scene, canvas3d });
+    }
+  }
   scene.render();
 
   // 2Dグラフィック画面の描画
@@ -797,34 +826,68 @@ if (detectRuntime() === "browser") {
   const str = String(score);
   context.fillText(str, canvas2d.width / 3.0 - context.measureText(str).width, 24);
 
-  context.strokeStyle = "rgb(0, 255, 255)";
-  context.fillStyle = "rgb(0, 255, 255)";
-  context.lineWidth = 1.0;
-  context.font = "8px 'MS Gothic', sans-serif";
-  context.textBaseline = "bottom";
-  for (let i = 0; i < enemies.length; i++) {
-    const tmp = enemies[i].enemy;
-    projectWorldToNdc(scene, tmp.x(), tmp.y(), tmp.z(), enemyHudProj);
-    if (enemyHudProj.z < -1.0 || enemyHudProj.z > 1.0) continue;
-    const px = (enemyHudProj.x * 0.5 + 0.5) * canvas2d.width;
-    const py = (-enemyHudProj.y * 0.5 + 0.5) * canvas2d.height;
-    const dx = tmp.x() - jiki.x();
-    const dy = tmp.y() - jiki.y();
-    const dz = tmp.z() - jiki.z();
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    let seg = 50.0 - distance;
-    if (seg < 15.0) seg = 15.0;
-    const tx = px + seg + 20.0;
-    const ty = py - seg;
-    context.beginPath();
-    context.moveTo(px, py);
-    context.lineTo(px + seg, ty);
-    context.lineTo(tx, ty);
-    context.stroke();
-    const label = String((distance * 100.0) | 0);
-    const whole = label.slice(0, -2) || "0";
-    const frac = label.slice(-2).padStart(2, "0");
-    context.fillText(`${whole}.${frac}`, px + seg, ty);
+  if (!useEnemyHud3D) {
+    context.strokeStyle = "rgb(0, 255, 255)";
+    context.fillStyle = "rgb(0, 255, 255)";
+    context.lineWidth = 1.0;
+    context.font = "8px 'MS Gothic', sans-serif";
+    context.textBaseline = "bottom";
+    for (let i = 0; i < enemies.length; i++) {
+      const tmp = enemies[i].enemy;
+      projectWorldToNdc(scene, tmp.x(), tmp.y(), tmp.z(), enemyHudProj);
+      if (enemyHudProj.z < -1.0 || enemyHudProj.z > 1.0) continue;
+      const px = (enemyHudProj.x * 0.5 + 0.5) * canvas2d.width;
+      const py = (-enemyHudProj.y * 0.5 + 0.5) * canvas2d.height;
+      const dx = tmp.x() - jiki.x();
+      const dy = tmp.y() - jiki.y();
+      const dz = tmp.z() - jiki.z();
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      let seg = 50.0 - distance;
+      if (seg < 15.0) seg = 15.0;
+      const tx = px + seg + 20.0;
+      const ty = py - seg;
+      context.beginPath();
+      context.moveTo(px, py);
+      context.lineTo(px + seg, ty);
+      context.lineTo(tx, ty);
+      context.stroke();
+      const label = String((distance * 100.0) | 0);
+      const whole = label.slice(0, -2) || "0";
+      const frac = label.slice(-2).padStart(2, "0");
+      context.fillText(`${whole}.${frac}`, px + seg, ty);
+    }
+  }
+
+  if (screenshotFlag) {
+    screenshotFlag = false;
+    const w = canvas3d.width;
+    const h = canvas3d.height;
+    Tools.CreateScreenshot(
+      engine,
+      camera,
+      { width: w, height: h },
+      (dataUrl) => {
+        // 3Dと2Dを合成して保存
+        const composite = document.createElement("canvas");
+        composite.width = w;
+        composite.height = h;
+        const cctx = composite.getContext("2d");
+        const img = new Image();
+        img.onload = () => {
+          cctx.drawImage(img, 0, 0, w, h);
+          cctx.drawImage(canvas2d, 0, 0, canvas2d.width, canvas2d.height, 0, 0, w, h);
+          let a = document.createElement("a");
+          a.href = composite.toDataURL("image/png");
+          a.download = "screenshot.png";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          a = null;
+        };
+        img.src = dataUrl;
+      },
+      "image/png"
+    );
   }
 });
 </script>

@@ -44,7 +44,11 @@ export const ENEMY_SHOT_RADIUS = 0.35 * 1.5;
 export const ENEMY_SHOT_END = WAIT_1 * 2;
 
 export function _MOD(a, b) {
-  return ((a % b) + b) % b;
+  if (a < 0) {
+    a = -a;
+    return -(a - Math.floor(a / b) * b);
+  }
+  return a - Math.floor(a / b) * b;
 }
 export function _DIV(a, b) {
   return (a / b) | 0;
