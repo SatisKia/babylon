@@ -69,7 +69,7 @@ function combinedWave(x, zPlane, freq, amp, speedMul, elapseT, dx, dz, withNoise
     let nr = 0.0;
     let ampN = 1.0;
     let fr = 1.0;
-    for (let o = 0; o < 4; o++) {
+    for (let o = 0; o < 4; o++) { // オクターブ（重ね合わせの層数）
       const fbx = ncx * fr * scale;
       const fby = ncz * fr * scale;
       const fi = Math.floor(fbx);
@@ -83,9 +83,9 @@ function combinedWave(x, zPlane, freq, amp, speedMul, elapseT, dx, dz, withNoise
       const u = f * f * (3.0 - 2.0 * f);
       const v = g * g * (3.0 - 2.0 * g);
       const sm = ra + (rb - ra) * u + (rc - ra) * v * (1 - u) + (rd - rb) * u * v;
-      nr += ampN * sm;
-      ampN *= 0.5;
-      fr *= 2.0;
+      nr += ampN * sm; // 各オクターブの加算分を重ねたFBM値
+      ampN *= 0.5; // 振幅を半分 → 細部の影響を弱める
+      fr *= 2.0; // 周波数を2倍 → より細かい模様
     }
     const nv = (nr / WAVE_FBM_SUM_MAX) * WAVE_COMBINED_NOISE_STRENGTH;
     phase += nv * Math.PI;

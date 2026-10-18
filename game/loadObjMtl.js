@@ -164,6 +164,19 @@ export function applyAmbient(root, ambient) {
   }
 }
 
+// diffuseColorを黒にして拡散項（頂点色・拡散テクスチャ）を消し、emissiveColorだけ設定する
+export function applyEmissive(root, color) {
+  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+  for (const mesh of meshes) {
+    const material = mesh.material;
+    if (!material) continue;
+    if (material.diffuseColor) material.diffuseColor.set(0, 0, 0);
+    material.emissiveColor = new Color3(color.r, color.g, color.b);
+    material.useEmissiveAsIllumination = true; // 頂点色の影響を外す
+  }
+}
+
 // 配下メッシュを面ごとの法線でフラットシェーディング化する。
 // OBJに法線が無い場合、法線未生成だと陰影が付かず真っ白になるため、面ごとの法線を生成して面の境がはっきり見えるようにする。
 export function applyFlatShading(root) {
@@ -172,6 +185,22 @@ export function applyFlatShading(root) {
   for (const mesh of meshes) {
     if (!mesh.isVerticesDataPresent(VertexBuffer.PositionKind)) continue;
     mesh.convertToFlatShadedMesh();
+  }
+}
+
+// OBJの頂点法線を維持したGouraudシェーディング。ストリップ内（法線が共有される面）は補間され、法線が分かれた境界だけエッジが立つ。
+export function applyGouraudShading(root) {
+  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+  for (const mesh of meshes) {
+    if (!mesh.isVerticesDataPresent(VertexBuffer.PositionKind)) continue;
+    if (mesh.isVerticesDataPresent(VertexBuffer.NormalKind)) continue;
+    const positions = mesh.getVerticesData(VertexBuffer.PositionKind, true);
+    const indices = mesh.getIndices();
+    if (!positions || !indices) continue;
+    const normals = [];
+    VertexData.ComputeNormals(positions, indices, normals);
+    mesh.setVerticesData(VertexBuffer.NormalKind, normals, true);
   }
 }
 
