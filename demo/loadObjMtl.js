@@ -179,6 +179,7 @@ export function applyKaBlendToDiffuse(root, weight) {
 }
 
 // 拡散／アルベド色を基準にemissiveColorをambient倍した色にし、環境光による明るさの近似を足す
+// * demo未使用 *
 export function applyAmbient(root, ambient) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
@@ -193,6 +194,7 @@ export function applyAmbient(root, ambient) {
 }
 
 // diffuseColorを黒にして拡散項（頂点色・拡散テクスチャ）を消し、emissiveColorだけ設定する
+// * demo未使用 *
 export function applyEmissive(root, color) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
@@ -217,6 +219,7 @@ export function applyFlatShading(root) {
 }
 
 // OBJの頂点法線を維持したGouraudシェーディング。ストリップ内（法線が共有される面）は補間され、法線が分かれた境界だけエッジが立つ。
+// * demo未使用 *
 export function applyGouraudShading(root) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
