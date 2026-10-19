@@ -68,59 +68,6 @@ export function convertMaterialsToLambert(root) {
   }
 }
 
-// MTLマテリアル名に対応する拡散テクスチャを差し替える（convertMaterialsToLambertの前後どちらでも可。後ならconvert側で名前を維持すること）
-// * game未使用 *
-export function applyDiffuseMapsFromUrls(scene, root, materialUrlByName) {
-  const urlMap = {};
-  for (const entry of materialUrlByName) {
-    urlMap[entry.materialName] = entry.url;
-  }
-  if (!urlMap) return;
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    const material = mesh.material;
-    if (!material || !material.name) continue;
-    const url = urlMap[material.name];
-    if (url == null || typeof url !== "string") continue;
-    const old = material.diffuseTexture || material.albedoTexture;
-    if (old) old.dispose();
-    // MTLFileLoader.INVERT_TEXTURE_Y: MTLのmap_Kdと同じY反転。falseのままだとOBJのUV向きと一致せず貼り付きが壊れて見える
-    const tex = new Texture(url, scene, false, MTLFileLoader.INVERT_TEXTURE_Y, Texture.TRILINEAR_SAMPLINGMODE);
-    if ("diffuseTexture" in material) material.diffuseTexture = tex;
-    else if ("albedoTexture" in material) material.albedoTexture = tex;
-  }
-}
-
-// StandardMaterialのみを対象に、specularColorとspecularPowerを渡された値で一括設定する
-// * game未使用 *
-export function applyStandardSpecular(root, specularColor, specularPower) {
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    const material = mesh.material;
-    if (!material || material.getClassName?.() !== "StandardMaterial") continue;
-    material.specularColor.copyFrom(specularColor);
-    material.specularPower = specularPower;
-  }
-}
-
-// 拡散テクスチャをライティングなしで表示（emissive経由でアルベド相当を出す）
-// アルベド（albedo）：照明計算に入る前の、面のベースとなる色（テクスチャならベースの画素色）。BabylonではalbedoColor/albedoTextureがそれに相当。PBRではBase Colorとほぼ同義。古典的マテリアルではdiffuseColor/diffuseTextureに近い。
-// * game未使用 *
-export function applyUnlitDiffuseTexture(root) {
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    const material = mesh.material;
-    if (!material || material.getClassName?.() !== "StandardMaterial") continue;
-    material.disableLighting = true; // ライト計算を切る
-    material.emissiveColor = Color3.White();
-    if (material.diffuseTexture) material.emissiveTexture = material.diffuseTexture; // emissiveTextureに拡散テクスチャを流用
-    material.specularColor = Color3.Black(); // 鏡面反射をゼロにして、ライティング無効のテクスチャ色が正しく反映されるように
-  }
-}
-
 // 各メッシュのdiffuseColorまたはalbedoColorを、指定のColor3にそろえる
 export function applyDiffuse(root, diffuseColor) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
@@ -130,27 +77,6 @@ export function applyDiffuse(root, diffuseColor) {
     if (!material) continue;
     if (material.diffuseColor) material.diffuseColor.copyFrom(diffuseColor);
     else if (material.albedoColor) material.albedoColor.copyFrom(diffuseColor);
-  }
-}
-
-// MTLのKa（ambientColor）を拡散色へブレンドして、ライティングが弱いときでもKaの色味が乗りやすくする。
-// weight=0で無効、1に近いほどKa寄り（Kdは薄まる）。
-// * game未使用 *
-export function applyKaBlendToDiffuse(root, weight) {
-  if (weight <= 0) return;
-  const w = Math.min(1, weight);
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    const material = mesh.material;
-    if (!material || !material.ambientColor) continue;
-    const base = material.diffuseColor || material.albedoColor;
-    if (!base) continue;
-    const a = material.ambientColor;
-    const ow = 1 - w;
-    base.r = base.r * ow + a.r * w;
-    base.g = base.g * ow + a.g * w;
-    base.b = base.b * ow + a.b * w;
   }
 }
 
@@ -169,7 +95,6 @@ export function applyAmbient(root, ambient) {
 }
 
 // diffuseColorを黒にして拡散項（頂点色・拡散テクスチャ）を消し、emissiveColorだけ設定する
-// * game未使用 *
 export function applyEmissive(root, color) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
@@ -182,20 +107,7 @@ export function applyEmissive(root, color) {
   }
 }
 
-// 配下メッシュを面ごとの法線でフラットシェーディング化する。
-// OBJに法線が無い場合、法線未生成だと陰影が付かず真っ白になるため、面ごとの法線を生成して面の境がはっきり見えるようにする。
-// * game未使用 *
-export function applyFlatShading(root) {
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    if (!mesh.isVerticesDataPresent(VertexBuffer.PositionKind)) continue;
-    mesh.convertToFlatShadedMesh();
-  }
-}
-
 // OBJの頂点法線を維持したGouraudシェーディング。ストリップ内（法線が共有される面）は補間され、法線が分かれた境界だけエッジが立つ。
-// * game未使用 *
 export function applyGouraudShading(root) {
   const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
   if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);

@@ -96,6 +96,18 @@ export function convertMaterialsToLambert(root) {
   }
 }
 
+// 各メッシュのdiffuseColorまたはalbedoColorを、指定のColor3にそろえる
+export function applyDiffuse(root, diffuseColor) {
+  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
+  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
+  for (const mesh of meshes) {
+    const material = mesh.material;
+    if (!material) continue;
+    if (material.diffuseColor) material.diffuseColor.copyFrom(diffuseColor);
+    else if (material.albedoColor) material.albedoColor.copyFrom(diffuseColor);
+  }
+}
+
 // MTLマテリアル名に対応する拡散テクスチャを差し替える（convertMaterialsToLambertの前後どちらでも可。後ならconvert側で名前を維持すること）
 export function applyDiffuseMapsFromUrls(scene, root, materialUrlByName) {
   const urlMap = {};
@@ -146,18 +158,6 @@ export function applyUnlitDiffuseTexture(root) {
   }
 }
 
-// 各メッシュのdiffuseColorまたはalbedoColorを、指定のColor3にそろえる
-export function applyDiffuse(root, diffuseColor) {
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    const material = mesh.material;
-    if (!material) continue;
-    if (material.diffuseColor) material.diffuseColor.copyFrom(diffuseColor);
-    else if (material.albedoColor) material.albedoColor.copyFrom(diffuseColor);
-  }
-}
-
 // MTLのKa（ambientColor）を拡散色へブレンドして、ライティングが弱いときでもKaの色味が乗りやすくする。
 // weight=0で無効、1に近いほどKa寄り（Kdは薄まる）。
 export function applyKaBlendToDiffuse(root, weight) {
@@ -178,35 +178,6 @@ export function applyKaBlendToDiffuse(root, weight) {
   }
 }
 
-// 拡散／アルベド色を基準にemissiveColorをambient倍した色にし、環境光による明るさの近似を足す
-// * demo未使用 *
-export function applyAmbient(root, ambient) {
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    const material = mesh.material;
-    if (!material) continue;
-    const base = material.diffuseColor || material.albedoColor;
-    if (!base) continue;
-    const e = base.clone ? base.clone() : Color3.White();
-    material.emissiveColor = new Color3(e.r * ambient, e.g * ambient, e.b * ambient);
-  }
-}
-
-// diffuseColorを黒にして拡散項（頂点色・拡散テクスチャ）を消し、emissiveColorだけ設定する
-// * demo未使用 *
-export function applyEmissive(root, color) {
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    const material = mesh.material;
-    if (!material) continue;
-    if (material.diffuseColor) material.diffuseColor.set(0, 0, 0);
-    material.emissiveColor = new Color3(color.r, color.g, color.b);
-    material.useEmissiveAsIllumination = true; // 頂点色の影響を外す
-  }
-}
-
 // 配下メッシュを面ごとの法線でフラットシェーディング化する。
 // OBJに法線が無い場合、法線未生成だと陰影が付かず真っ白になるため、面ごとの法線を生成して面の境がはっきり見えるようにする。
 export function applyFlatShading(root) {
@@ -215,23 +186,6 @@ export function applyFlatShading(root) {
   for (const mesh of meshes) {
     if (!mesh.isVerticesDataPresent(VertexBuffer.PositionKind)) continue;
     mesh.convertToFlatShadedMesh();
-  }
-}
-
-// OBJの頂点法線を維持したGouraudシェーディング。ストリップ内（法線が共有される面）は補間され、法線が分かれた境界だけエッジが立つ。
-// * demo未使用 *
-export function applyGouraudShading(root) {
-  const meshes = root.getChildMeshes ? root.getChildMeshes(true) : [];
-  if (root.getClassName && root.getClassName() === "Mesh") meshes.push(root);
-  for (const mesh of meshes) {
-    if (!mesh.isVerticesDataPresent(VertexBuffer.PositionKind)) continue;
-    if (mesh.isVerticesDataPresent(VertexBuffer.NormalKind)) continue;
-    const positions = mesh.getVerticesData(VertexBuffer.PositionKind, true);
-    const indices = mesh.getIndices();
-    if (!positions || !indices) continue;
-    const normals = [];
-    VertexData.ComputeNormals(positions, indices, normals);
-    mesh.setVerticesData(VertexBuffer.NormalKind, normals, true);
   }
 }
 
