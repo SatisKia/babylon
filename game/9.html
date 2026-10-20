@@ -16,7 +16,7 @@
 </script>
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, KeyboardEventTypes, Matrix, PointerEventTypes, Quaternion, Scene, ShadowGenerator, Sound, Sprite, SpriteManager, Tools, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { applyAmbient, applyDiffuse, applyGouraudShading, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { _DIV, _MOD, Baku, checkHit, ENEMY01_SPEED, ENEMY02_SPEED, ENEMY_SHOT_RADIUS, ENEMY_SHOT_SPEED, ENEMY_TYPE_01, ENEMY_TYPE_02, ENEMY_Y_MIN, Enemy01, Enemy02, EnemyShot, GROUND_SIZE, Jiki, JikiJet, JikiShots, JIKI_SPEED, modelBoundingRadius, MyRandom, projectWorldToNdc, quaternionJikiPose, rxRyDegFromForward, unprojectNdcToWorld, WAIT_1 } from "./gameCommon.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
 import { BabylonGamepad } from "./babylonGamepad.js";
@@ -570,13 +570,13 @@ if (useSound) {
 
     enemy01Model = await loadObjMtl(scene, MODEL_DIR, "enemy01");
     convertMaterialsToLambert(enemy01Model);
-    applySmoothShading(enemy01Model);
+    applyGouraudShading(enemy01Model);
     enemy01Model.scaling.setAll(0.02);
     enemyRadius01 = modelBoundingRadius(enemy01Model);
 
     enemy02Model = await loadObjMtl(scene, MODEL_DIR, "enemy02");
     convertMaterialsToLambert(enemy02Model);
-    applySmoothShading(enemy02Model);
+    applyGouraudShading(enemy02Model);
     enemy02Model.scaling.setAll(0.02);
     enemyRadius02 = modelBoundingRadius(enemy02Model);
 
