@@ -4,10 +4,28 @@ import "@babylonjs/loaders/OBJ/objFileLoader.js"; // OBJローダー読み込み
 
 export async function loadObjMtl(scene, basePath, modelName) {
   const path = basePath.endsWith("/") ? basePath : `${basePath}/`;
-  const container = await LoadAssetContainerAsync(`${modelName}.obj`, scene, {
+  const objUrl = `${path}${modelName}.obj`;
+  const response = await fetch(objUrl);
+  if (!response.ok) return null;
+  const objText = await response.text();
+
+  // vnの存在をチェックする。vnが無いとローダーは全頂点の法線を(0,1,0)で埋める。
+  const hasVertexNormals = /^vn\s/m.test(objText);
+
+  const container = await LoadAssetContainerAsync(`data:${objText}`, scene, {
     rootUrl: path,
     pluginExtension: ".obj",
   });
+
+  // vnが無い場合にローダーが格納した法線を外す
+  if (!hasVertexNormals) {
+    for (const mesh of container.meshes || []) {
+      if (mesh.isVerticesDataPresent?.(VertexBuffer.NormalKind)) {
+        mesh.removeVerticesData(VertexBuffer.NormalKind);
+      }
+    }
+  }
+
   container.addAllToScene();
   const rootTn = container.transformNodes?.find((t) => t.name === "__root__");
   if (rootTn) {

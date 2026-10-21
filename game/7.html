@@ -15,9 +15,11 @@
 </script>
 <script type="module">
 import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, KeyboardEventTypes, Scene, Sprite, SpriteManager, UniversalCamera, Vector3 } from "@babylonjs/core";
-import { applyAmbient, applyDiffuse, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
+import { applyAmbient, applyDiffuse, applyEmissive, applySmoothShading, convertMaterialsToLambert, loadObjMtl } from "./loadObjMtl.js";
 import { _DIV, _MOD, GROUND_SIZE, Jiki, JikiJet, JikiShots, modelBoundingRadius, quaternionJikiPose, rxRyDegFromForward, WAIT_1 } from "./gameCommon.js";
 import { myRunRenderLoop, useRightHandedSystem } from "./common.js";
+
+const useApplyEmissive = false;
 
 const MODEL_DIR = "./model/";
 
@@ -155,8 +157,12 @@ function syncShotModels() {
 
     shotModel = await loadObjMtl(scene, MODEL_DIR, "jiki_shot");
     convertMaterialsToLambert(shotModel);
-    applyDiffuse(shotModel, new Color3(1.0, 1.0, 0.0));
-    applyAmbient(shotModel, 2.0);
+    if (useApplyEmissive) {
+      applyEmissive(shotModel, new Color3(1.0, 1.0, 0.0));
+    } else {
+      applyDiffuse(shotModel, new Color3(1.0, 1.0, 0.0));
+      applyAmbient(shotModel, 2.0);
+    }
     applySmoothShading(shotModel);
     shotModel.scaling.setAll(0.01);
     jikiShots = new JikiShots(modelBoundingRadius(shotModel) * 1.5);
