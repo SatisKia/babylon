@@ -69,9 +69,9 @@ export function convertMaterialsToLambert(root) {
     else if (any.albedoTexture) std.diffuseTexture = any.albedoTexture;
     if (any.diffuseColor) std.diffuseColor = any.diffuseColor.clone();
     else if (any.albedoColor)
-      std.diffuseColor = any.albedoColor.clone
-        ? any.albedoColor.clone()
-        : Color3.FromArray(any.albedoColor.asArray?.() || [1, 1, 1]);
+      std.diffuseColor = any.albedoColor.clone ?
+        any.albedoColor.clone() :
+        Color3.FromArray(any.albedoColor.asArray?.() || [1, 1, 1]);
     if (any.emissiveColor) std.emissiveColor = any.emissiveColor.clone();
     if (any.ambientColor) std.ambientColor = any.ambientColor.clone();
     std.specularColor = Color3.Black();

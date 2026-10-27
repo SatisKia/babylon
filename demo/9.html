@@ -73,9 +73,9 @@ function makeModel(id, x) {
   return mesh;
 }
 
-const models = useRightHandedSystem
-  ? [makeModel(0, 0.0), makeModel(1, -5.0), makeModel(2, 5.0)]
-  : [makeModel(0, 0.0), makeModel(1, 5.0), makeModel(2, -5.0)];
+const models = useRightHandedSystem ?
+  [makeModel(0, 0.0), makeModel(1, -5.0), makeModel(2, 5.0)] :
+  [makeModel(0, 0.0), makeModel(1, 5.0), makeModel(2, -5.0)];
 
 const ambientLightIntensity = 0.6 * AMBIENT_LIGHT_COEF;
 const em = ambientLightIntensity * 0.25;
